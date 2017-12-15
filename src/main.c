@@ -42,7 +42,7 @@ handle_syscall(void)
   vmm_read_register(HV_X86_RAX, &rax);
   if (rax >= NR_SYSCALLS) {
     warnk("unknown system call: %lld\n", rax);
-    send_signal(getpid(), LINUX_SIGSYS);
+    // send_signal(getpid(), LINUX_SIGSYS);
   }
   uint64_t rdi, rsi, rdx, r10, r8, r9;
   vmm_read_register(HV_X86_RDI, &rdi);
@@ -54,9 +54,7 @@ handle_syscall(void)
   uint64_t retval = sc_handler_table[rax](rdi, rsi, rdx, r10, r8, r9);
   vmm_write_register(HV_X86_RAX, retval);
 
-  if (rax == LSYS_rt_sigreturn) {
-    return -1;
-  }
+  // TODO: Handle sigreturn
   return 0;
 }
 
@@ -64,9 +62,9 @@ int
 task_run()
 {
   /* handle pending signals */
-  if (has_sigpending()) {
-    handle_signal();
-  }
+  // if (has_sigpending()) {
+  //   handle_signal();
+  // }
   return vmm_run();
 }
 
@@ -117,7 +115,7 @@ main_loop(int return_on_sigret)
         uint64_t gladdr;
         vmm_read_vmcs(VMCS_RO_EXIT_QUALIFIC, &gladdr);
         printk("page fault: caused by guest linear address 0x%llx\n", gladdr);
-        send_signal(getpid(), LINUX_SIGSEGV);
+        // send_signal(getpid(), LINUX_SIGSEGV);
       }
       case X86_VEC_UD: {
         uint64_t instlen, rip;
@@ -140,7 +138,7 @@ main_loop(int return_on_sigret)
         for (uint64_t i = 0; i < instlen; ++i)
           fprintf(stderr, "%02x ", inst[i] & 0xff);
         fprintf(stderr, "\n");
-        send_signal(getpid(), LINUX_SIGILL);
+        // send_signal(getpid(), LINUX_SIGILL);
       }
       case X86_VEC_DE:
       case X86_VEC_DB:
@@ -205,7 +203,7 @@ main_loop(int return_on_sigret)
 
         if (!addr_ok(gladdr, verify)) {
           printk("page fault: caused by guest linear address 0x%llx\n", gladdr);
-          send_signal(getpid(), LINUX_SIGSEGV);
+          // send_signal(getpid(), LINUX_SIGSEGV);
         }
       } else {
         printk("guest linear address = (unavailable)\n");
@@ -379,13 +377,13 @@ init_first_proc(const char *root)
   INIT_LIST_HEAD(&proc.tasks);
   list_add(&task.head, &proc.tasks);
   init_mm(proc.mm);
-  init_signal();
+  // init_signal();
   int rootfd = open(root, O_RDONLY | O_DIRECTORY);
   if (rootfd < 0) {
     perror("could not open initial root directory");
     exit(1);
   }
-  init_fileinfo(rootfd);
+  // init_fileinfo(rootfd);
   close(rootfd);
   proc.pfutex = kh_init(pfutex);
   pthread_mutex_init(&proc.futex_mutex, NULL);

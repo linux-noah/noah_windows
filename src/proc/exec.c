@@ -35,16 +35,16 @@ load_elf_interp(const char *path, ulong load_addr)
   int fd;
   struct stat st;
 
-  if ((fd = vkern_open(path, LINUX_O_RDONLY, 0)) < 0) {
-    fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
-    return -1;
-  }
+  // if ((fd = vkern_open(path, LINUX_O_RDONLY, 0)) < 0) {
+  //   fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
+  //   return -1;
+  // }
 
   fstat(fd, &st);
 
   data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
 
-  vkern_close(fd);
+  // vkern_close(fd);
 
   h = (Elf64_Ehdr *)data;
 
@@ -372,13 +372,13 @@ prepare_newproc(void)
   destroy_mm(proc.mm); // munlock is also done by unmapping mm
   init_mm(proc.mm);
   init_reg_state();
-  reset_signal_state();
+  // reset_signal_state();
   // TODO: destroy LDT if it is implemented
 
   /* task.tid = getpid(); */
   task.clear_child_tid = task.set_child_tid = 0;
   task.robust_list = 0;
-  close_cloexec();
+  // close_cloexec();
 }
 
 int
@@ -389,12 +389,12 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   struct stat st;
   char *data;
   
-  if ((err = do_access(elf_path, X_OK)) < 0) {
-    return err;
-  }
-  if ((fd = vkern_open(elf_path, LINUX_O_RDONLY, 0)) < 0) {
-    return fd;
-  }
+  // if ((err = do_access(elf_path, X_OK)) < 0) {
+  //   return err;
+  // }
+  // if ((fd = vkern_open(elf_path, LINUX_O_RDONLY, 0)) < 0) {
+  //  return fd;
+  // }
   if (proc.nr_tasks > 1) {
     warnk("Multi-thread execve is not implemented yet\n");
     return -LINUX_EINVAL;
@@ -407,7 +407,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
 
   data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
 
-  vkern_close(fd);
+  // vkern_close(fd);
 
   drop_privilege();
 
@@ -436,94 +436,3 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   return 0;
 }
 
-DEFINE_SYSCALL(execve, gstr_t, gelf_path, gaddr_t, gargv, gaddr_t, genvp)
-{
-  int err;
-  char elf_path[LINUX_PATH_MAX];
-  strncpy_from_user(elf_path, gelf_path, sizeof elf_path);
-
-  size_t argv_rsrv = 1024;
-  char **argv = malloc(sizeof(char *) * argv_rsrv);
-  size_t argc = 0;
-  while (true) {
-    size_t i = argc;
-    gaddr_t addr;
-    if (copy_from_user(&addr, gargv + sizeof(gaddr_t) * i, sizeof addr)) {
-      err = -LINUX_EFAULT;
-      goto faile_copy_argv;
-    }
-    if (addr == 0)
-      break;
-    argc++;
-    if (argc + 1 > LINUX_MAX_ARG_STRINGS) {
-      err = -LINUX_E2BIG;
-      goto faile_copy_argv;
-    }
-    if (argc + 1 > argv_rsrv) {
-      argv_rsrv *= 2;
-      argv = realloc(argv, sizeof(char *) * argv_rsrv);
-    }
-    int size = strnlen_user(addr, LINUX_MAX_ARG_STRLEN);
-    if (size == 0) {
-      err = -LINUX_EFAULT;
-      goto faile_copy_argv;
-    }
-    if (size > LINUX_MAX_ARG_STRLEN) {
-      err = -LINUX_E2BIG;
-      goto faile_copy_argv;
-    }
-    argv[i] = alloca(size);
-    copy_from_user(argv[i], addr, size); /* always success */
-  }
-  argv[argc] = NULL;
-
-  size_t envp_rsrv = 1024;
-  char **envp = malloc(sizeof(char *) * envp_rsrv);
-  size_t envc = 0;
-  while (true) {
-    size_t i = envc;
-    gaddr_t addr;
-    if (copy_from_user(&addr, genvp + sizeof(gaddr_t) * i, sizeof addr)) {
-      err = -LINUX_EFAULT;
-      goto fail_copy_envp;
-    }
-    if (addr == 0)
-      break;
-    envc++;
-    if (envc + 1 > LINUX_MAX_ARG_STRINGS) {
-      err = -LINUX_E2BIG;
-      goto fail_copy_envp;
-    }
-    if (envc + 1 > envp_rsrv) {
-      envp_rsrv *= 2;
-      envp = realloc(envp, sizeof(char *) * envp_rsrv);
-    }
-    int size = strnlen_user(addr, LINUX_MAX_ARG_STRLEN);
-    if (size == 0) {
-      err = -LINUX_EFAULT;
-      goto fail_copy_envp;
-    }
-    if (size > LINUX_MAX_ARG_STRLEN) {
-      err = -LINUX_E2BIG;
-      goto fail_copy_envp;
-    }
-    envp[i] = alloca(size);
-    copy_from_user(envp[i], addr, size); /* always success */
-  }
-  envp[envc] = NULL;
-
-  err = do_exec(elf_path, argc, argv, envp);
-  if (err < 0) {
-    goto fail_copy_envp;
-  }
-
-  uint64_t entry;
-  vmm_read_register(HV_X86_RIP, &entry);
-  vmm_write_register(HV_X86_RIP, entry - 2); // because syscall handler adds 2 to current rip when returning to vmm_run
-
- fail_copy_envp:
-  free(envp);
- faile_copy_argv:
-  free(argv);
-  return err;
-}

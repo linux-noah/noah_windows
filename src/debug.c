@@ -26,7 +26,8 @@ init_sink(const char *fn, FILE **sinkp, const char *name)
     fn = "/dev/null";
   }
   int fd = open(fn, O_RDWR | O_CREAT, 0644);
-  *sinkp = fdopen(vkern_dup_fd(fd, false), "w");
+  // *sinkp = fdopen(vkern_dup_fd(fd, false), "w");
+  *sinkp = fdopen(fd, "w");
   close(fd);
 
   char buf[1000];
