@@ -31,7 +31,9 @@ def main
     puts opts
     exit 1
   end
-  targets = ARGV.empty? ? nil : ARGV
+  unless ARGV.empty?
+    @opionts[:targets] = ARGV
+  end
   puts <<-"EOS"
 
 ===============
@@ -39,9 +41,9 @@ Test Starts
 ===============
 
   EOS
-  test_assertion(targets)
-  test_stdout(targets)
-  test_shell(targets)
+  test_assertion()
+  test_stdout()
+  test_shell()
   puts("")
   report()
 end
@@ -74,13 +76,15 @@ def arch_dirname
 end
 
 def collect_tests(test_dirname)
-  Dir.glob(__dir__ + "/#{test_dirname}/build/*") \
+  candidates = Dir.glob(__dir__ + "/#{test_dirname}/build/*") \
     + Dir.glob(__dir__ + "/arch/#{arch_dirname}/#{test_dirname}/build/*")
+  return candidates if @options[:targets].nil?
+  candidates.filter! {|filename| @options[:targets].include?(File.basename(filename))}
+  candidates
 end
 
-def test_assertion(targets = nil)
+def test_assertion
   collect_tests("test_assertion").each do |target|
-    next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
     out, err, status = Open3.capture3("#{noah_binname} #{relative(target).shellescape}")
     
@@ -110,11 +114,10 @@ def test_assertion(targets = nil)
   end
 end
 
-def test_stdout(targets = nil)
+def test_stdout
   collect_tests("test_stdout").each do |target|
-    next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
-    testdata_base = __dir__ + "/test_stdout/" + File.basename(target)
+    testdata_base = File.dirname(target) + "/../" + File.basename(target)
     target_stdin = File.exists?(testdata_base + ".stdin") ? (testdata_base + ".stdin").shellescape : "/dev/null"
     target_arg = File.exists?(testdata_base + ".arg") ? File.read(testdata_base + ".arg") : ""
     expected = File.read(testdata_base + ".expected")
@@ -137,9 +140,8 @@ def test_stdout(targets = nil)
   end
 end
 
-def test_shell(targets = nil)
+def test_shell
   collect_tests("test_shell").each do |target|
-    next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
     run = __dir__ + "/test_shell/" + File.basename(target) + ".sh"
 
