@@ -11,8 +11,8 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 include_directories(include)
 
 add_executable(noah
-  lib/vmm.c
   src/main.c
+  src/vmm.c
   src/meta_strace.c
   src/base.c
   src/conv.c
