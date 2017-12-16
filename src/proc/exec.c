@@ -39,12 +39,17 @@ load_elf_interp(const char *path, ulong load_addr)
   //   fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
   //   return -1;
   // }
+  if ((fd = open(path, O_RDONLY, 0)) < 0) {
+    fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
+    return -1;
+  }
 
   fstat(fd, &st);
 
   data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
 
   // vkern_close(fd);
+  close(fd);
 
   h = (Elf64_Ehdr *)data;
 
@@ -395,6 +400,9 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   // if ((fd = vkern_open(elf_path, LINUX_O_RDONLY, 0)) < 0) {
   //  return fd;
   // }
+  if ((fd = open(elf_path, O_RDONLY, 0)) < 0) {
+   return fd;
+  }
   if (proc.nr_tasks > 1) {
     warnk("Multi-thread execve is not implemented yet\n");
     return -LINUX_EINVAL;
@@ -408,6 +416,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
 
   // vkern_close(fd);
+  close(fd);
 
   drop_privilege();
 

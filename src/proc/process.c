@@ -55,3 +55,22 @@ int linux_to_darwin_waitopts(int options)
   return opts;
 }
 
+DEFINE_SYSCALL(exit, int, reason)
+{
+  if (task.clear_child_tid) {
+    int zero = 0;
+    if (copy_to_user(task.clear_child_tid, &zero, sizeof zero))
+      return -LINUX_EFAULT;
+    //do_futex_wake(task.clear_child_tid, 1);
+  }
+  vmm_destroy_vcpu();
+  pthread_rwlock_wrlock(&proc.lock);
+  if (proc.nr_tasks == 1) {
+    _exit(reason);
+  } else {
+    proc.nr_tasks--;
+    list_del(&task.head);
+    pthread_rwlock_unlock(&proc.lock);
+    pthread_exit(&reason);
+  }
+}

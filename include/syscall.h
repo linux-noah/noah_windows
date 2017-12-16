@@ -1,8 +1,8 @@
 #include <stdint.h>
 
 #define SYSCALLS                          \
-  SYSCALL(0, unimplemented)               \
-  SYSCALL(1, unimplemented)               \
+  SYSCALL(0, read)                        \
+  SYSCALL(1, write)                       \
   SYSCALL(2, unimplemented)               \
   SYSCALL(3, unimplemented)               \
   SYSCALL(4, unimplemented)               \
@@ -61,7 +61,7 @@
   SYSCALL(57, unimplemented)              \
   SYSCALL(58, unimplemented)              \
   SYSCALL(59, unimplemented)              \
-  SYSCALL(60, unimplemented)              \
+  SYSCALL(60, exit)                       \
   SYSCALL(61, unimplemented)              \
   SYSCALL(62, unimplemented)              \
   SYSCALL(63, unimplemented)              \
