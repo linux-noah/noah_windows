@@ -3,6 +3,8 @@
 require "open3"
 require "shellwords"
 require "pathname"
+require 'rbconfig'
+require 'optparse'
 
 @assertion = {pass: 0, fail: 0, premature: 0}
 @assertion_reports = []
@@ -11,14 +13,24 @@ require "pathname"
 @shell = {pass: 0, fail: 0, premature: 0}
 @shell_reports = []
 
-@verbose = false
+@options = {}
 
 def main
-  if ARGV[0] == "-v"
-    ARGV.shift
-    @verbose = true
+  opts = OptionParser.new
+  opts.banner = "Usage: test.rb path_to_noah_executable [test_cases..]"
+  opts.on("-v", "--verbose", "Show verbose outputs") {|v| @options[:verbose] = v}
+  opts.on("-aARCH", "--arch=ARCH", "Test testcases for architecture ARCH") {|a| @options[:arch] = a}
+  opts.on("-h", "--help", "Print this help") do
+    puts opts
+    exit
   end
-  @noah = ARGV.shift + " --mnt=\"#{__dir__}/testing_root\""
+  opts.parse!
+  @options[:noah_binname] = ARGV.shift
+  if @options[:noah_binname].nil?
+    STDERR.puts "path_to_noah_executable is missing"
+    puts opts
+    exit 1
+  end
   targets = ARGV.empty? ? nil : ARGV
   puts <<-"EOS"
 
@@ -40,14 +52,37 @@ def relative(path)
 end
 
 def puts_testname(target)
-  puts "\n===#{File.basename(target)}" if @verbose
+  puts "\n===#{File.basename(target)}" if @options[:verbose]
+end
+
+def noah_binname
+  @options[:noah_binname] + " --mnt=\"#{__dir__}/testing_root\""
+end
+
+def arch_dirname
+  return @options[:arch] if @options[:arch]
+  case RbConfig::CONFIG['host_os']
+  when /mswin|msys|mingw|cygwin/
+    "Windows"
+  when /darwin|mac os/
+    "Darwin"
+  when /linux/
+    "Linux"
+  else
+    raise 'Unsupported OS'
+  end
+end
+
+def collect_tests(test_dirname)
+  Dir.glob(__dir__ + "/#{test_dirname}/build/*") \
+    + Dir.glob(__dir__ + "/arch/#{arch_dirname}/#{test_dirname}/build/*")
 end
 
 def test_assertion(targets = nil)
-  Dir.glob(__dir__ + "/test_assertion/build/*").each do |target|
+  collect_tests("test_assertion").each do |target|
     next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
-    out, err, status = Open3.capture3("#{@noah} #{relative(target).shellescape}")
+    out, err, status = Open3.capture3("#{noah_binname} #{relative(target).shellescape}")
     
     nr_tests_match = /1->([0-9]+)/.match(out.lines[0])
     if nr_tests_match
@@ -76,14 +111,14 @@ def test_assertion(targets = nil)
 end
 
 def test_stdout(targets = nil)
-  Dir.glob(__dir__ + "/test_stdout/build/*").each do |target|
+  collect_tests("test_stdout").each do |target|
     next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
     testdata_base = __dir__ + "/test_stdout/" + File.basename(target)
     target_stdin = File.exists?(testdata_base + ".stdin") ? (testdata_base + ".stdin").shellescape : "/dev/null"
     target_arg = File.exists?(testdata_base + ".arg") ? File.read(testdata_base + ".arg") : ""
     expected = File.read(testdata_base + ".expected")
-    out, err, status = Open3.capture3("#{@noah} #{relative(target).shellescape} #{target_arg} < #{target_stdin}")
+    out, err, status = Open3.capture3("#{noah_binname} #{relative(target).shellescape} #{target_arg} < #{target_stdin}")
 
     if out == expected
       @stdout[:pass] += 1
@@ -103,12 +138,12 @@ def test_stdout(targets = nil)
 end
 
 def test_shell(targets = nil)
-  Dir.glob(__dir__ + "/test_shell/build/*").each do |target|
+  collect_tests("test_shell").each do |target|
     next if targets && !targets.include?(File.basename(target))
     puts_testname(target)
     run = __dir__ + "/test_shell/" + File.basename(target) + ".sh"
 
-    _, err, status = Open3.capture3("NOAH=\"#{@noah}\" TARGET=#{relative(target).shellescape} /bin/bash #{relative(run).shellescape}")
+    _, err, status = Open3.capture3("NOAH=\"#{noah_binname}\" TARGET=#{relative(target).shellescape} /bin/bash #{relative(run).shellescape}")
 
     if status.success?
       @shell[:pass] += 1
