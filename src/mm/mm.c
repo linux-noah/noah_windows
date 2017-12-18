@@ -7,7 +7,7 @@
 #include "common.h"
 #include "util/list.h"
 #include "mm.h"
-#include "vmm.h"
+#include "vm.h"
 #include "noah.h"
 
 #include "linux/mman.h"
@@ -36,7 +36,7 @@ kmap(void *ptr, size_t size, hv_memory_flags_t flags)
   pthread_rwlock_wrlock(&vkern_mm.alloc_lock);
 
   record_region(&vkern_mm, ptr, noah_kern_brk, size, hv_mflag_to_linux_mprot(flags), -1, -1, 0);
-  vmm_mmap(noah_kern_brk, size, flags, ptr);
+  vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
   pthread_rwlock_unlock(&vkern_mm.alloc_lock);
@@ -60,8 +60,8 @@ init_page()
   pml4_ptr = kmap(pml4, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE);
   pml4[0] |= kmap(pdp, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE) & 0x000ffffffffff000ul;
 
-  vmm_write_vmcs(VMCS_GUEST_CR0, CR0_PG | CR0_PE | CR0_NE);
-  vmm_write_vmcs(VMCS_GUEST_CR3, pml4_ptr);
+  write_vmcs(VMCS_GUEST_CR0, CR0_PG | CR0_PE | CR0_NE);
+  write_vmcs(VMCS_GUEST_CR3, pml4_ptr);
 }
 
 uint64_t gdt[3] __page_aligned = {
@@ -76,58 +76,58 @@ init_segment()
 {
   kmap(gdt, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE);
 
-  vmm_write_vmcs(VMCS_GUEST_GDTR_BASE, gdt_ptr);
-  vmm_write_vmcs(VMCS_GUEST_GDTR_LIMIT, 3 * 8 - 1);
+  write_vmcs(VMCS_GUEST_GDTR_BASE, gdt_ptr);
+  write_vmcs(VMCS_GUEST_GDTR_LIMIT, 3 * 8 - 1);
 
-  vmm_write_vmcs(VMCS_GUEST_TR_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_TR_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_TR_AR, 0x0000008b);
+  write_vmcs(VMCS_GUEST_TR_BASE, 0);
+  write_vmcs(VMCS_GUEST_TR_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_TR_AR, 0x0000008b);
 
-  vmm_write_vmcs(VMCS_GUEST_LDTR_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_LDTR_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_LDTR_AR, DESC_UNUSABLE);
+  write_vmcs(VMCS_GUEST_LDTR_BASE, 0);
+  write_vmcs(VMCS_GUEST_LDTR_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_LDTR_AR, DESC_UNUSABLE);
 
-  vmm_write_vmcs(VMCS_GUEST_IDTR_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_IDTR_LIMIT, 0xffff);
+  write_vmcs(VMCS_GUEST_IDTR_BASE, 0);
+  write_vmcs(VMCS_GUEST_IDTR_LIMIT, 0xffff);
 
   uint32_t codeseg_ar = 0x0000209B;
   uint32_t dataseg_ar = 0x00000093;
-  vmm_write_vmcs(VMCS_GUEST_CS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_CS_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_CS_AR, codeseg_ar);
+  write_vmcs(VMCS_GUEST_CS_BASE, 0);
+  write_vmcs(VMCS_GUEST_CS_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_CS_AR, codeseg_ar);
 
-  vmm_write_vmcs(VMCS_GUEST_DS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_DS_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_DS_AR, dataseg_ar);
+  write_vmcs(VMCS_GUEST_DS_BASE, 0);
+  write_vmcs(VMCS_GUEST_DS_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_DS_AR, dataseg_ar);
 
-  vmm_write_vmcs(VMCS_GUEST_ES, 0);
-  vmm_write_vmcs(VMCS_GUEST_ES_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_ES_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_ES_AR, dataseg_ar);
+  write_vmcs(VMCS_GUEST_ES, 0);
+  write_vmcs(VMCS_GUEST_ES_BASE, 0);
+  write_vmcs(VMCS_GUEST_ES_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_ES_AR, dataseg_ar);
 
-  vmm_write_vmcs(VMCS_GUEST_FS, 0);
-  vmm_write_vmcs(VMCS_GUEST_FS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_FS_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_FS_AR, dataseg_ar);
+  write_vmcs(VMCS_GUEST_FS, 0);
+  write_vmcs(VMCS_GUEST_FS_BASE, 0);
+  write_vmcs(VMCS_GUEST_FS_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_FS_AR, dataseg_ar);
 
-  vmm_write_vmcs(VMCS_GUEST_GS, 0);
-  vmm_write_vmcs(VMCS_GUEST_GS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_GS_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_GS_AR, dataseg_ar);
+  write_vmcs(VMCS_GUEST_GS, 0);
+  write_vmcs(VMCS_GUEST_GS_BASE, 0);
+  write_vmcs(VMCS_GUEST_GS_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_GS_AR, dataseg_ar);
 
-  vmm_write_vmcs(VMCS_GUEST_SS, 0);
-  vmm_write_vmcs(VMCS_GUEST_SS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_SS_LIMIT, 0);
-  vmm_write_vmcs(VMCS_GUEST_SS_AR, dataseg_ar);
+  write_vmcs(VMCS_GUEST_SS, 0);
+  write_vmcs(VMCS_GUEST_SS_BASE, 0);
+  write_vmcs(VMCS_GUEST_SS_LIMIT, 0);
+  write_vmcs(VMCS_GUEST_SS_AR, dataseg_ar);
 
-  vmm_write_register(HV_X86_CS, GSEL(SEG_CODE, 0));
-  vmm_write_register(HV_X86_DS, GSEL(SEG_DATA, 0));
-  vmm_write_register(HV_X86_ES, GSEL(SEG_DATA, 0));
-  vmm_write_register(HV_X86_FS, GSEL(SEG_DATA, 0));
-  vmm_write_register(HV_X86_GS, GSEL(SEG_DATA, 0));
-  vmm_write_register(HV_X86_SS, GSEL(SEG_DATA, 0));
-  vmm_write_register(HV_X86_TR, 0);
-  vmm_write_register(HV_X86_LDTR, 0);
+  write_register(HV_X86_CS, GSEL(SEG_CODE, 0));
+  write_register(HV_X86_DS, GSEL(SEG_DATA, 0));
+  write_register(HV_X86_ES, GSEL(SEG_DATA, 0));
+  write_register(HV_X86_FS, GSEL(SEG_DATA, 0));
+  write_register(HV_X86_GS, GSEL(SEG_DATA, 0));
+  write_register(HV_X86_SS, GSEL(SEG_DATA, 0));
+  write_register(HV_X86_TR, 0);
+  write_register(HV_X86_LDTR, 0);
 }
 
 void
@@ -253,7 +253,7 @@ destroy_mm(struct mm *mm)
   list_for_each_safe (list, t, &mm->mm_regions) {
     struct mm_region *r = list_entry(list, struct mm_region, list);
     munmap(r->haddr, r->size);
-    vmm_munmap(r->gaddr, r->size);
+    vm_munmap(r->gaddr, r->size);
     free(r);
   }
   RB_INIT(&mm->mm_region_tree);

@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "linux/time.h"
 #include "linux/fs.h"
 

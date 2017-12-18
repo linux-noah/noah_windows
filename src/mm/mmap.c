@@ -1,7 +1,7 @@
 #include "common.h"
 
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 #include "x86/vm.h"
 
@@ -58,7 +58,7 @@ do_munmap(gaddr_t gaddr, size_t size)
     struct list_head *next = overlapping->list.next;
     list_del(&overlapping->list);
     RB_REMOVE(mm_region_tree, &proc.mm->mm_region_tree, overlapping);
-    vmm_munmap(overlapping->gaddr, overlapping->size);
+    vm_munmap(overlapping->gaddr, overlapping->size);
     munmap(overlapping->haddr, overlapping->size);
     free(overlapping);
     if (next == &proc.mm->mm_regions)
@@ -116,7 +116,7 @@ do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, o
   do_munmap(addr, len);
   record_region(proc.mm, ptr, addr, len, l_prot, l_flags, fd, offset);
 
-  vmm_mmap(addr, len, linux_mprot_to_hv_mflag(l_prot), ptr);
+  vm_mmap(addr, len, linux_mprot_to_hv_mflag(l_prot), ptr);
 
   return addr;
 }

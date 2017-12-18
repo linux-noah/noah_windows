@@ -28,7 +28,6 @@ static inline int is_page_aligned(void *addr, page_type_t page)
 }
 
 /* idt */
-typedef unsigned uint;
 
 struct gate_desc {
   uint64_t offset_low:16;

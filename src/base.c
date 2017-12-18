@@ -1,6 +1,6 @@
 #include "common.h"
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 
 #include <stdlib.h>
@@ -108,7 +108,7 @@ DEFINE_SYSCALL(unimplemented)
 {
   uint64_t rax;
 
-  vmm_read_register(HV_X86_RAX, &rax);
+  read_register(HV_X86_RAX, &rax);
 
   warnk("unimplemented syscall: %lld\n", rax);
   return -LINUX_ENOSYS;

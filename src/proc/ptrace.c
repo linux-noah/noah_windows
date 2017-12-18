@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 
 #include "linux/common.h"

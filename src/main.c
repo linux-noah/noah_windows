@@ -10,7 +10,7 @@
 #include <fcntl.h>
 
 #include "common.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 #include "noah.h"
 #include "syscall.h"
@@ -39,20 +39,20 @@ static int
 handle_syscall(void)
 {
   uint64_t rax;
-  vmm_read_register(HV_X86_RAX, &rax);
+  read_register(HV_X86_RAX, &rax);
   if (rax >= NR_SYSCALLS) {
     warnk("unknown system call: %lld\n", rax);
     // send_signal(getpid(), LINUX_SIGSYS);
   }
   uint64_t rdi, rsi, rdx, r10, r8, r9;
-  vmm_read_register(HV_X86_RDI, &rdi);
-  vmm_read_register(HV_X86_RSI, &rsi);
-  vmm_read_register(HV_X86_RDX, &rdx);
-  vmm_read_register(HV_X86_R10, &r10);
-  vmm_read_register(HV_X86_R8, &r8);
-  vmm_read_register(HV_X86_R9, &r9);
+  read_register(HV_X86_RDI, &rdi);
+  read_register(HV_X86_RSI, &rsi);
+  read_register(HV_X86_RDX, &rdx);
+  read_register(HV_X86_R10, &r10);
+  read_register(HV_X86_R8, &r8);
+  read_register(HV_X86_R9, &r9);
   uint64_t retval = sc_handler_table[rax](rdi, rsi, rdx, r10, r8, r9);
-  vmm_write_register(HV_X86_RAX, retval);
+  write_register(HV_X86_RAX, retval);
 
   // TODO: Handle sigreturn
   return 0;
@@ -65,7 +65,7 @@ task_run()
   // if (has_sigpending()) {
   //   handle_signal();
   // }
-  return vmm_run();
+  return run_vcpu();
 }
 
 void
@@ -80,7 +80,7 @@ main_loop(int return_on_sigret)
     /* print_regs(); */
 
     uint64_t exit_reason;
-    vmm_read_vmcs(VMCS_RO_EXIT_REASON, &exit_reason);
+    read_vmcs(VMCS_RO_EXIT_REASON, &exit_reason);
 
     switch (exit_reason) {
     case VMX_REASON_VMCALL:
@@ -93,7 +93,7 @@ main_loop(int return_on_sigret)
        * - Intel SDM 27.2.2, Table 24-15: Information for VM Exits Due to Vectored Events
        */
       uint64_t exc_info;
-      vmm_read_vmcs(VMCS_RO_VMEXIT_IRQ_INFO, &exc_info);
+      read_vmcs(VMCS_RO_VMEXIT_IRQ_INFO, &exc_info);
 
       int int_type = (exc_info & 0x700) >> 8;
       switch (int_type) {
@@ -113,18 +113,18 @@ main_loop(int return_on_sigret)
       case X86_VEC_PF: {
         /* FIXME */
         uint64_t gladdr;
-        vmm_read_vmcs(VMCS_RO_EXIT_QUALIFIC, &gladdr);
+        read_vmcs(VMCS_RO_EXIT_QUALIFIC, &gladdr);
         printk("page fault: caused by guest linear address 0x%llx\n", gladdr);
         // send_signal(getpid(), LINUX_SIGSEGV);
       }
       case X86_VEC_UD: {
         uint64_t instlen, rip;
-        vmm_read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
-        vmm_read_register(HV_X86_RIP, &rip);
+        read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
+        read_register(HV_X86_RIP, &rip);
         if (is_syscall(instlen, rip)) {
           int r = handle_syscall();
-          vmm_read_register(HV_X86_RIP, &rip); /* reload rip for execve */
-          vmm_write_register(HV_X86_RIP, rip + 2);
+          read_register(HV_X86_RIP, &rip); /* reload rip for execve */
+          write_register(HV_X86_RIP, rip + 2);
           if (return_on_sigret && r < 0) {
             return;
           }
@@ -161,8 +161,8 @@ main_loop(int return_on_sigret)
         /* FIXME */
         warnk("exception thrown: %d\n", exc_vec);
         uint64_t instlen, rip;
-        vmm_read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
-        vmm_read_register(HV_X86_RIP, &rip);
+        read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
+        read_register(HV_X86_RIP, &rip);
         fprintf(stderr, "inst: \n");
         unsigned char inst[instlen];
         if (copy_from_user(inst, rip, instlen))
@@ -179,17 +179,17 @@ main_loop(int return_on_sigret)
       printk("reason: ept_violation\n");
 
       uint64_t gpaddr;
-      vmm_read_vmcs(VMCS_GUEST_PHYSICAL_ADDRESS, &gpaddr);
+      read_vmcs(VMCS_GUEST_PHYSICAL_ADDRESS, &gpaddr);
       printk("guest-physical address = 0x%llx\n", gpaddr);
 
       uint64_t qual;
 
-      vmm_read_vmcs(VMCS_RO_EXIT_QUALIFIC, &qual);
+      read_vmcs(VMCS_RO_EXIT_QUALIFIC, &qual);
       printk("exit qualification = 0x%llx\n", qual);
 
       if (qual & (1 << 7)) {
         uint64_t gladdr;
-        vmm_read_vmcs(VMCS_RO_GUEST_LIN_ADDR, &gladdr);
+        read_vmcs(VMCS_RO_GUEST_LIN_ADDR, &gladdr);
         printk("guest linear address = 0x%llx\n", gladdr);
 
         int verify = 0;
@@ -212,18 +212,18 @@ main_loop(int return_on_sigret)
 
     case VMX_REASON_CPUID: {
       uint64_t rax;
-      vmm_read_register(HV_X86_RAX, &rax);
+      read_register(HV_X86_RAX, &rax);
       unsigned eax, ebx, ecx, edx;
       __get_cpuid(rax, &eax, &ebx, &ecx, &edx);
 
-      vmm_write_register(HV_X86_RAX, eax);
-      vmm_write_register(HV_X86_RBX, ebx);
-      vmm_write_register(HV_X86_RCX, ecx);
-      vmm_write_register(HV_X86_RDX, edx);
+      write_register(HV_X86_RAX, eax);
+      write_register(HV_X86_RBX, ebx);
+      write_register(HV_X86_RCX, ecx);
+      write_register(HV_X86_RDX, edx);
 
       uint64_t rip;
-      vmm_read_register(HV_X86_RIP, &rip);
-      vmm_write_register(HV_X86_RIP, rip + 2);
+      read_register(HV_X86_RIP, &rip);
+      write_register(HV_X86_RIP, rip + 2);
 
       break;
     }
@@ -259,36 +259,36 @@ init_vmcs()
 
 #define cap2ctrl(cap,ctrl) (((ctrl) | ((cap) & 0xffffffff)) & ((cap) >> 32))
 
-  vmm_write_vmcs(VMCS_CTRL_PIN_BASED, cap2ctrl(vmx_cap_pinbased, 0));
-  vmm_write_vmcs(VMCS_CTRL_CPU_BASED, cap2ctrl(vmx_cap_procbased,
+  write_vmcs(VMCS_CTRL_PIN_BASED, cap2ctrl(vmx_cap_pinbased, 0));
+  write_vmcs(VMCS_CTRL_CPU_BASED, cap2ctrl(vmx_cap_procbased,
                                                CPU_BASED_HLT |
                                                CPU_BASED_CR8_LOAD |
                                                CPU_BASED_CR8_STORE));
-  vmm_write_vmcs(VMCS_CTRL_CPU_BASED2, cap2ctrl(vmx_cap_procbased2, 0));
-  vmm_write_vmcs(VMCS_CTRL_VMENTRY_CONTROLS,  cap2ctrl(vmx_cap_entry,
+  write_vmcs(VMCS_CTRL_CPU_BASED2, cap2ctrl(vmx_cap_procbased2, 0));
+  write_vmcs(VMCS_CTRL_VMENTRY_CONTROLS,  cap2ctrl(vmx_cap_entry,
                                                        VMENTRY_LOAD_EFER |
                                                        VMENTRY_GUEST_IA32E));
-  vmm_write_vmcs(VMCS_CTRL_VMEXIT_CONTROLS, cap2ctrl(vmx_cap_exit, VMEXIT_LOAD_EFER));
-  vmm_write_vmcs(VMCS_CTRL_EXC_BITMAP, 0xffffffff);
-  vmm_write_vmcs(VMCS_CTRL_CR0_SHADOW, 0);
-  vmm_write_vmcs(VMCS_CTRL_CR4_MASK, 0);
-  vmm_write_vmcs(VMCS_CTRL_CR4_SHADOW, 0);
+  write_vmcs(VMCS_CTRL_VMEXIT_CONTROLS, cap2ctrl(vmx_cap_exit, VMEXIT_LOAD_EFER));
+  write_vmcs(VMCS_CTRL_EXC_BITMAP, 0xffffffff);
+  write_vmcs(VMCS_CTRL_CR0_SHADOW, 0);
+  write_vmcs(VMCS_CTRL_CR4_MASK, 0);
+  write_vmcs(VMCS_CTRL_CR4_SHADOW, 0);
 }
 
 void
 init_special_regs()
 {
   uint64_t cr0;
-  vmm_read_vmcs(VMCS_GUEST_CR0, &cr0);
-  vmm_write_vmcs(VMCS_GUEST_CR0, (cr0 & ~CR0_EM) | CR0_MP);
+  read_vmcs(VMCS_GUEST_CR0, &cr0);
+  write_vmcs(VMCS_GUEST_CR0, (cr0 & ~CR0_EM) | CR0_MP);
 
   uint64_t cr4;
-  vmm_read_vmcs(VMCS_GUEST_CR4, &cr4);
-  vmm_write_vmcs(VMCS_GUEST_CR4, cr4 | CR4_PAE | CR4_OSFXSR | CR4_OSXMMEXCPT | CR4_VMXE | CR4_OSXSAVE);
+  read_vmcs(VMCS_GUEST_CR4, &cr4);
+  write_vmcs(VMCS_GUEST_CR4, cr4 | CR4_PAE | CR4_OSFXSR | CR4_OSXMMEXCPT | CR4_VMXE | CR4_OSXSAVE);
 
   uint64_t efer;
-  vmm_read_vmcs(VMCS_GUEST_IA32_EFER, &efer);
-  vmm_write_vmcs(VMCS_GUEST_IA32_EFER, efer | EFER_LME | EFER_LMA);
+  read_vmcs(VMCS_GUEST_IA32_EFER, &efer);
+  write_vmcs(VMCS_GUEST_IA32_EFER, efer | EFER_LME | EFER_LMA);
 }
 
 struct gate_desc idt[256] __page_aligned;
@@ -299,23 +299,23 @@ init_idt()
 {
   idt_ptr = kmap(idt, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE);
 
-  vmm_write_vmcs(VMCS_GUEST_IDTR_BASE, idt_ptr);
-  vmm_write_vmcs(VMCS_GUEST_IDTR_LIMIT, sizeof idt);
+  write_vmcs(VMCS_GUEST_IDTR_BASE, idt_ptr);
+  write_vmcs(VMCS_GUEST_IDTR_LIMIT, sizeof idt);
 }
 
 void
 init_regs()
 {
   /* set up cpu regs */
-  vmm_write_register(HV_X86_RFLAGS, 0x2);
+  write_register(HV_X86_RFLAGS, 0x2);
 }
 
 void
 init_msr()
 {
-  vmm_enable_native_msr(MSR_TIME_STAMP_COUNTER, 1);
-  vmm_enable_native_msr(MSR_TSC_AUX, 1);
-  vmm_enable_native_msr(MSR_KERNEL_GS_BASE, 1);
+  enable_native_msr(MSR_TIME_STAMP_COUNTER, 1);
+  enable_native_msr(MSR_TSC_AUX, 1);
+  enable_native_msr(MSR_KERNEL_GS_BASE, 1);
 }
 
 void
@@ -363,7 +363,7 @@ init_fpu()
   fx.mxcsr = 0x1f80;
   fx.mxcsr_mask = 0;
 
-  vmm_write_fpstate(&fx, sizeof fx);
+  write_fpstate(&fx, sizeof fx);
 }
 
 static void
@@ -517,7 +517,7 @@ main(int argc, char *argv[], char **envp)
     abort();
   }
 
-  vmm_create();
+  create_vm();
 
   init_vkernel(root);
 
@@ -541,7 +541,7 @@ main(int argc, char *argv[], char **envp)
 
   main_loop(0);
 
-  vmm_destroy();
+  destroy_vm();
 
   return 0;
 }

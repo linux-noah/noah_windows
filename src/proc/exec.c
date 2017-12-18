@@ -13,7 +13,7 @@
 #include <sys/resource.h>
 
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 #include "x86/vm.h"
 #include "elf.h"
@@ -89,7 +89,7 @@ load_elf_interp(const char *path, ulong load_addr)
     map_top = MAX(map_top, roundup(vaddr + size, PAGE_SIZE(PAGE_4KB)));
   }
 
-  vmm_write_vmcs(VMCS_GUEST_RIP, load_addr + h->e_entry);
+  write_vmcs(VMCS_GUEST_RIP, load_addr + h->e_entry);
   proc.mm->start_brk = map_top;
 
   munmap(data, st.st_size);
@@ -175,7 +175,7 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
     }
   }
   else {
-    vmm_write_vmcs(VMCS_GUEST_RIP, ehdr->e_entry + global_offset);
+    write_vmcs(VMCS_GUEST_RIP, ehdr->e_entry + global_offset);
     proc.mm->start_brk = map_top;
   }
 
@@ -245,9 +245,9 @@ push(const void *data, size_t n)
 
   assert(data != 0);
 
-  vmm_read_register(HV_X86_RSP, &rsp);
+  read_register(HV_X86_RSP, &rsp);
   rsp -= size;
-  vmm_write_register(HV_X86_RSP, rsp);
+  write_register(HV_X86_RSP, rsp);
 
   copy_to_user(rsp, data, n);
 
@@ -261,8 +261,8 @@ init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf
 
   do_mmap(STACK_TOP - STACK_SIZE, STACK_SIZE, PROT_READ | PROT_WRITE, LINUX_PROT_READ | LINUX_PROT_WRITE, LINUX_MAP_PRIVATE | LINUX_MAP_FIXED | LINUX_MAP_ANONYMOUS, -1, 0);
 
-  vmm_write_register(HV_X86_RSP, STACK_TOP);
-  vmm_write_register(HV_X86_RBP, STACK_TOP);
+  write_register(HV_X86_RSP, STACK_TOP);
+  write_register(HV_X86_RBP, STACK_TOP);
 
   char random[16];
 
@@ -338,32 +338,32 @@ init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf
 static void
 init_reg_state(void)
 {
-  vmm_write_register(HV_X86_RAX, 0);
-  vmm_write_register(HV_X86_RBX, 0);
-  vmm_write_register(HV_X86_RCX, 0);
-  vmm_write_register(HV_X86_RDX, 0);
-  vmm_write_register(HV_X86_RSI, 0);
-  vmm_write_register(HV_X86_RDI, 0);
-  vmm_write_register(HV_X86_R8, 0);
-  vmm_write_register(HV_X86_R9, 0);
-  vmm_write_register(HV_X86_R10, 0);
-  vmm_write_register(HV_X86_R11, 0);
-  vmm_write_register(HV_X86_R12, 0);
-  vmm_write_register(HV_X86_R13, 0);
-  vmm_write_register(HV_X86_R14, 0);
-  vmm_write_register(HV_X86_R15, 0);
+  write_register(HV_X86_RAX, 0);
+  write_register(HV_X86_RBX, 0);
+  write_register(HV_X86_RCX, 0);
+  write_register(HV_X86_RDX, 0);
+  write_register(HV_X86_RSI, 0);
+  write_register(HV_X86_RDI, 0);
+  write_register(HV_X86_R8, 0);
+  write_register(HV_X86_R9, 0);
+  write_register(HV_X86_R10, 0);
+  write_register(HV_X86_R11, 0);
+  write_register(HV_X86_R12, 0);
+  write_register(HV_X86_R13, 0);
+  write_register(HV_X86_R14, 0);
+  write_register(HV_X86_R15, 0);
 
-  vmm_write_vmcs(VMCS_GUEST_FS, 0);
-  vmm_write_vmcs(VMCS_GUEST_ES, 0);
-  vmm_write_vmcs(VMCS_GUEST_GS, 0);
-  vmm_write_vmcs(VMCS_GUEST_DS, 0);
-  vmm_write_vmcs(VMCS_GUEST_CS, GSEL(SEG_CODE, 0));
-  vmm_write_vmcs(VMCS_GUEST_DS, GSEL(SEG_DATA, 0));
+  write_vmcs(VMCS_GUEST_FS, 0);
+  write_vmcs(VMCS_GUEST_ES, 0);
+  write_vmcs(VMCS_GUEST_GS, 0);
+  write_vmcs(VMCS_GUEST_DS, 0);
+  write_vmcs(VMCS_GUEST_CS, GSEL(SEG_CODE, 0));
+  write_vmcs(VMCS_GUEST_DS, GSEL(SEG_DATA, 0));
 
-  vmm_write_vmcs(VMCS_GUEST_FS_BASE, 0);
-  vmm_write_vmcs(VMCS_GUEST_GS_BASE, 0);
+  write_vmcs(VMCS_GUEST_FS_BASE, 0);
+  write_vmcs(VMCS_GUEST_GS_BASE, 0);
 
-  vmm_write_vmcs(VMCS_GUEST_LDTR, 0);
+  write_vmcs(VMCS_GUEST_LDTR, 0);
 
   init_fpu();
 }

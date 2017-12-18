@@ -7,7 +7,7 @@
 
 #include "common.h"
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 
 #include "linux/common.h"
 #include "linux/misc.h"
@@ -45,7 +45,7 @@ init_task(unsigned long clone_flags, gaddr_t child_tid, gaddr_t tls)
   /* task.robust_list_len = 0; */
 
   if (clone_flags & LINUX_CLONE_SETTLS) {
-    vmm_write_vmcs(VMCS_GUEST_FS_BASE, tls);
+    write_vmcs(VMCS_GUEST_FS_BASE, tls);
   }
 }
 
@@ -54,13 +54,13 @@ __do_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t paren
 {
   // Because Apple Hypervisor Framwork won't let us use multiple VMs,
   // we destroy the current vm and restore it later
-  struct vmm_snapshot snapshot;
-  vmm_snapshot(&snapshot);
+  struct snapshot_vm snapshot;
+  snapshot_vm(&snapshot);
   vmm_destroy();
 
   int ret = syswrap(fork());
 
-  vmm_reentry(&snapshot);
+  restore_vm(&snapshot);
 
   if (ret < 0) {
     return ret;
@@ -103,11 +103,11 @@ __start_thread(struct clone_thread_arg *arg)
 
   printk("__start_thread\n");
 
-  vmm_create_vcpu(&arg->vcpu_snapshot);
-  vmm_write_register(HV_X86_RAX, 0);
-  vmm_write_register(HV_X86_RSP, arg->newsp);
+  create_vcpu(&arg->vcpu_snapshot);
+  write_register(HV_X86_RAX, 0);
+  write_register(HV_X86_RSP, arg->newsp);
   vmm_read_register(HV_X86_RIP, &rip);
-  vmm_write_register(HV_X86_RIP, rip + 2);
+  write_register(HV_X86_RIP, rip + 2);
 
   pthread_rwlock_wrlock(&proc.lock);
   proc.nr_tasks++;
@@ -150,7 +150,7 @@ __do_clone_thread(unsigned long clone_flags, unsigned long newsp, gaddr_t parent
     .cond = PTHREAD_COND_INITIALIZER,
     .mutex =PTHREAD_MUTEX_INITIALIZER
   };
-  vmm_snapshot_vcpu(&arg->vcpu_snapshot);
+  snapshot_vm_vcpu(&arg->vcpu_snapshot);
   pthread_mutex_lock(&arg->mutex);
   pthread_create(&threadid, NULL, (void *)__start_thread, arg);
   pthread_cond_wait(&arg->cond, &arg->mutex);

@@ -9,7 +9,7 @@
 #include <libgen.h>
 #include <sys/syslimits.h>
 
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 #include "util/list.h"
 
@@ -32,7 +32,7 @@ pthread_rwlock_t alloc_lock;
 _Thread_local static struct vcpu *vcpu;
 
 void
-vmm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
+vm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
 {
   assert(is_page_aligned(haddr, PAGE_4KB));
   assert(is_page_aligned((void *) gaddr, PAGE_4KB));
@@ -45,14 +45,14 @@ vmm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
 }
 
 void
-vmm_munmap(gaddr_t gaddr, size_t size)
+vm_munmap(gaddr_t gaddr, size_t size)
 {
   assert(is_page_aligned((void *) size, PAGE_4KB));
   hv_vm_unmap(gaddr, size);
 }
 
 void
-vmm_write_fpstate(void *buffer, size_t size)
+write_fpstate(void *buffer, size_t size)
 {
   if (hv_vcpu_write_fpstate(vcpu->vcpuid, buffer, size) != HV_SUCCESS) {
     abort();
@@ -60,7 +60,7 @@ vmm_write_fpstate(void *buffer, size_t size)
 }
 
 void
-vmm_enable_native_msr(uint32_t msr, bool enable)
+enable_native_msr(uint32_t msr, bool enable)
 {
   if (hv_vcpu_enable_native_msr(vcpu->vcpuid, msr, enable) != HV_SUCCESS) {
     abort();
@@ -68,7 +68,7 @@ vmm_enable_native_msr(uint32_t msr, bool enable)
 }
 
 void
-vmm_create()
+create_vm()
 {
   hv_return_t ret;
 
@@ -86,13 +86,13 @@ vmm_create()
 
   printk("successfully created the vm\n");
 
-  vmm_create_vcpu(NULL);
+  create_vcpu(NULL);
 
   printk("successfully created a vcpu\n");
 }
 
 void
-vmm_destroy()
+destroy_vm()
 {
   hv_return_t ret;
 
@@ -117,7 +117,7 @@ vmm_destroy()
 }
 
 void
-vmm_create_vcpu(struct vcpu_snapshot *snapshot)
+create_vcpu(struct vcpu_snapshot *snapshot)
 {
   hv_return_t ret;
   hv_vcpuid_t vcpuid;
@@ -134,7 +134,7 @@ vmm_create_vcpu(struct vcpu_snapshot *snapshot)
   vcpu->vcpuid = vcpuid;
 
   if (snapshot) {
-    vmm_restore_vcpu(snapshot);
+    restore_vcpu(snapshot);
   }
 
   pthread_rwlock_wrlock(&alloc_lock);
@@ -144,7 +144,7 @@ vmm_create_vcpu(struct vcpu_snapshot *snapshot)
 }
 
 void
-vmm_destroy_vcpu(void)
+destroy_vcpu(void)
 {
   pthread_rwlock_wrlock(&alloc_lock);
   list_del(&vcpu->list);
@@ -160,21 +160,21 @@ print_regs()
 {
   uint64_t value;
 
-  vmm_read_register(HV_X86_RIP, &value);
+  read_register(HV_X86_RIP, &value);
   printk("\trip = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RAX, &value);
+  read_register(HV_X86_RAX, &value);
   printk("\trax = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RBX, &value);
+  read_register(HV_X86_RBX, &value);
   printk("\trbx = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RCX, &value);
+  read_register(HV_X86_RCX, &value);
   printk("\trcx = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RDX, &value);
+  read_register(HV_X86_RDX, &value);
   printk("\trdx = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RDI, &value);
+  read_register(HV_X86_RDI, &value);
   printk("\trdi = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RSI, &value);
+  read_register(HV_X86_RSI, &value);
   printk("\trsi = 0x%llx\n", value);
-  vmm_read_register(HV_X86_RBP, &value);
+  read_register(HV_X86_RBP, &value);
   printk("\trbp = 0x%llx\n", value);
 }
 
@@ -182,8 +182,8 @@ void
 dump_instr()
 {
   uint64_t instlen, rip;
-  vmm_read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
-  vmm_read_register(HV_X86_RIP, &rip);
+  read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
+  read_register(HV_X86_RIP, &rip);
   char inst_str[instlen * 3 + 1];
   for (size_t i = 0; i < instlen; i ++) {
     unsigned char *ip = guest_to_host(rip);
@@ -200,23 +200,23 @@ dump_instr()
 }
 
 void
-vmm_snapshot_vcpu(struct vcpu_snapshot *snapshot)
+snapshot_vcpu(struct vcpu_snapshot *snapshot)
 {
   /* snapshot registers */
   for (uint64_t i = 0; i < NR_X86_REG_LIST; i++) {
-    vmm_read_register(x86_reg_list[i], &snapshot->vcpu_reg[i]);
+    read_register(x86_reg_list[i], &snapshot->vcpu_reg[i]);
   }
   /* snapshot vmcs */
   for (uint64_t i = 0; i < NR_VMCS_FIELD; i++) {
-    vmm_read_vmcs(vmcs_field_list[i], &snapshot->vmcs[i]);
+    read_vmcs(vmcs_field_list[i], &snapshot->vmcs[i]);
   }
   hv_vcpu_read_fpstate(vcpu->vcpuid, snapshot->fpu_states, sizeof snapshot->fpu_states);
 }
 
 void
-vmm_snapshot(struct vmm_snapshot *snapshot)
+snapshot_vm(struct vm_snapshot *snapshot)
 {
-  printk("vmm_snapshot\n");
+  printk("vm_snapshot\n");
 
   pthread_rwlock_rdlock(&alloc_lock);
 
@@ -225,7 +225,7 @@ vmm_snapshot(struct vmm_snapshot *snapshot)
     exit(1);
   }
 
-  vmm_snapshot_vcpu(&snapshot->first_vcpu_snapshot);
+  snapshot_vcpu(&snapshot->first_vcpu_snapshot);
 
   pthread_rwlock_unlock(&alloc_lock);
 }
@@ -233,7 +233,7 @@ vmm_snapshot(struct vmm_snapshot *snapshot)
 void init_msr(); // TODO: save and resotre MSR. just call init_msr in main.c now
 
 void
-vmm_restore_vcpu(struct vcpu_snapshot *snapshot)
+restore_vcpu(struct vcpu_snapshot *snapshot)
 {
   /* restore vmcs */
   static const uint32_t restore_mask[] = {
@@ -283,13 +283,13 @@ vmm_restore_vcpu(struct vcpu_snapshot *snapshot)
         goto cont;
       }
     }
-    vmm_write_vmcs(vmcs_field_list[i], snapshot->vmcs[i]);
+    write_vmcs(vmcs_field_list[i], snapshot->vmcs[i]);
 cont: ;
   }
 
   /* restore registers */
   for (uint64_t i = 0; i < NR_X86_REG_LIST; i++) {
-    vmm_write_register(x86_reg_list[i], snapshot->vcpu_reg[i]);
+    write_register(x86_reg_list[i], snapshot->vcpu_reg[i]);
   }
 
   /* restore fpu states */
@@ -318,11 +318,11 @@ restore_ept()
 }
 
 void
-vmm_reentry(struct vmm_snapshot *snapshot)
+restore_vm(struct vm_snapshot *snapshot)
 {
   hv_return_t ret;
 
-  printk("vmm_restore\n");
+  printk("restore_vm\n");
   bool retried = false;
 retry:
   ret = hv_vm_create(HV_VM_DEFAULT);
@@ -350,7 +350,7 @@ retry:
     panic("could not create a vcpu: error code %x", ret);
     return;
   }
-  vmm_restore_vcpu(&snapshot->first_vcpu_snapshot);
+  restore_vcpu(&snapshot->first_vcpu_snapshot);
 
   pthread_rwlock_unlock(&alloc_lock);
   printk("vcpu_restore done\n");
@@ -361,7 +361,7 @@ retry:
 }
 
 void
-vmm_read_register(hv_x86_reg_t reg, uint64_t *val)
+read_register(hv_x86_reg_t reg, uint64_t *val)
 {
   if (hv_vcpu_read_register(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
     fprintf(stderr, "read_register failed\n");
@@ -370,7 +370,7 @@ vmm_read_register(hv_x86_reg_t reg, uint64_t *val)
 }
 
 void
-vmm_write_register(hv_x86_reg_t reg, uint64_t val) {
+write_register(hv_x86_reg_t reg, uint64_t val) {
   if (hv_vcpu_write_register(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
     fprintf(stderr, "write_register failed\n");
     abort();
@@ -378,7 +378,7 @@ vmm_write_register(hv_x86_reg_t reg, uint64_t val) {
 }
 
 void
-vmm_read_msr(hv_x86_reg_t reg, uint64_t *val)
+read_msr(hv_x86_reg_t reg, uint64_t *val)
 {
   if (hv_vcpu_read_msr(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
     fprintf(stderr, "read_msr failed\n");
@@ -387,7 +387,7 @@ vmm_read_msr(hv_x86_reg_t reg, uint64_t *val)
 }
 
 void
-vmm_write_msr(hv_x86_reg_t reg, uint64_t val) {
+write_msr(hv_x86_reg_t reg, uint64_t val) {
   if (hv_vcpu_write_msr(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
     fprintf(stderr, "write_msr failed\n");
     abort();
@@ -395,7 +395,7 @@ vmm_write_msr(hv_x86_reg_t reg, uint64_t val) {
 }
 
 void
-vmm_read_vmcs(hv_x86_reg_t field, uint64_t *val)
+read_vmcs(hv_x86_reg_t field, uint64_t *val)
 {
   if (hv_vmx_vcpu_read_vmcs(vcpu->vcpuid, field, val) != HV_SUCCESS) {
     fprintf(stderr, "read_vmcs failed\n");
@@ -404,7 +404,7 @@ vmm_read_vmcs(hv_x86_reg_t field, uint64_t *val)
 }
 
 void
-vmm_write_vmcs(hv_x86_reg_t field, uint64_t val) {
+write_vmcs(hv_x86_reg_t field, uint64_t val) {
   if (hv_vmx_vcpu_write_vmcs(vcpu->vcpuid, field, val) != HV_SUCCESS) {
     /* FIXME! it fails for the VMCS_CTRL_TSC_OFFSET field on some platforms */
     //fprintf(stderr, "write_vmcs failed: %s\n", vmcs_field_to_str(field));
@@ -413,7 +413,7 @@ vmm_write_vmcs(hv_x86_reg_t field, uint64_t val) {
 }
 
 int
-vmm_run()
+run_vcpu()
 {
   if (hv_vcpu_run(vcpu->vcpuid) == HV_SUCCESS) {
     return 0;

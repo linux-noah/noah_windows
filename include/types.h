@@ -1,4 +1,8 @@
+#ifndef NOAH_TYPES_H
+#define NOAH_TYPES_H
+
 #include <stdint.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 typedef unsigned char uchar;
@@ -8,3 +12,5 @@ typedef unsigned long ulong;
 
 typedef uint64_t gaddr_t;
 typedef gaddr_t  gstr_t;
+
+#endif

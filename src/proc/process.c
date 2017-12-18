@@ -13,7 +13,7 @@
 
 #include "common.h"
 #include "noah.h"
-#include "vmm.h"
+#include "vm.h"
 #include "mm.h"
 
 #include "linux/common.h"
@@ -63,7 +63,7 @@ DEFINE_SYSCALL(exit, int, reason)
       return -LINUX_EFAULT;
     //do_futex_wake(task.clear_child_tid, 1);
   }
-  vmm_destroy_vcpu();
+  destroy_vcpu();
   pthread_rwlock_wrlock(&proc.lock);
   if (proc.nr_tasks == 1) {
     _exit(reason);
