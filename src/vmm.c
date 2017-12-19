@@ -14,18 +14,15 @@
 #include "mm.h"
 #include "util/list.h"
 
-#include <Hypervisor/hv.h>
-#include <Hypervisor/hv_vmx.h>
-#include <Hypervisor/hv_arch_vmx.h>
-
 #include "x86/vm.h"
 #include "x86/vmx.h"
 
 struct vcpu {
   struct list_head list;
-  hv_vcpuid_t vcpuid;
+  vmm_cpu_t vcpuid;
 };
 
+vmm_vm_t vm;
 struct list_head vcpus;
 int nr_vcpus;
 pthread_rwlock_t alloc_lock;
@@ -39,9 +36,9 @@ vm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
   assert(is_page_aligned((void *) gaddr, PAGE_4KB));
   assert(is_page_aligned((void *) size, PAGE_4KB));
 
-  hv_vm_unmap(gaddr, size);
-  if (hv_vm_map(haddr, gaddr, size, prot) != HV_SUCCESS) {
-    panic("hv_vm_map failed\n");
+  vmm_memory_unmap(vm, gaddr, size);
+  if (vmm_memory_map(vm, haddr, gaddr, size, prot) != VMM_SUCCESS) {
+    panic("vmm_memory_map failed\n");
   }
 }
 
@@ -49,29 +46,19 @@ void
 vm_munmap(gaddr_t gaddr, size_t size)
 {
   assert(is_page_aligned((void *) size, PAGE_4KB));
-  hv_vm_unmap(gaddr, size);
+  vmm_memory_unmap(vm, gaddr, size);
 }
 
 void
 write_fpstate(void *buffer, size_t size)
 {
-  if (hv_vcpu_write_fpstate(vcpu->vcpuid, buffer, size) != HV_SUCCESS) {
-    abort();
-  }
-}
-
-void
-enable_native_msr(uint32_t msr, bool enable)
-{
-  if (hv_vcpu_enable_native_msr(vcpu->vcpuid, msr, enable) != HV_SUCCESS) {
-    abort();
-  }
+  // TODO
 }
 
 void
 create_vm()
 {
-  hv_return_t ret;
+  vmm_return_t ret;
 
   /* initialize global variables */
   pthread_rwlock_init(&alloc_lock, NULL);
@@ -79,15 +66,15 @@ create_vm()
   nr_vcpus = 0;
 
   /* create the VM */
-  ret = hv_vm_create(HV_VM_DEFAULT);
-  if (ret != HV_SUCCESS) {
+  ret = vmm_create(&vm);
+  if (ret != VMM_SUCCESS) {
     panic("could not create the vm: error code %x", ret);
     return;
   }
 
   printk("successfully created the vm\n");
 
-  create_vcpu(NULL);
+  create_vcpu();
 
   printk("successfully created a vcpu\n");
 }
@@ -95,12 +82,12 @@ create_vm()
 void
 destroy_vm()
 {
-  hv_return_t ret;
+  vmm_return_t ret;
 
   struct vcpu *vcpu;
   list_for_each_entry (vcpu, &vcpus, list) {
-    ret = hv_vcpu_destroy(vcpu->vcpuid);
-    if (ret != HV_SUCCESS) {
+    ret = vmm_cpu_destroy(vm, vcpu->vcpuid);
+    if (ret != VMM_SUCCESS) {
       panic("could not destroy the vcpu: error code %x", ret);
       exit(1);
     }
@@ -108,8 +95,8 @@ destroy_vm()
 
   printk("successfully destroyed the vcpu\n");
 
-  ret = hv_vm_destroy();
-  if (ret != HV_SUCCESS) {
+  ret = vmm_destroy(vm);
+  if (ret != VMM_SUCCESS) {
     panic("could not destroy the vm: error code %x", ret);
     exit(1);
   }
@@ -118,13 +105,13 @@ destroy_vm()
 }
 
 void
-create_vcpu(struct vcpu_snapshot *snapshot)
+create_vcpu()
 {
-  hv_return_t ret;
-  hv_vcpuid_t vcpuid;
+  vmm_return_t ret;
+  vmm_cpu_t vcpuid;
 
-  ret = hv_vcpu_create(&vcpuid, HV_VCPU_DEFAULT);
-  if (ret != HV_SUCCESS) {
+  ret = vmm_cpu_create(vm, &vcpuid);
+  if (ret != VMM_SUCCESS) {
     panic("could not create a vcpu: error code %x", ret);
     return;
   }
@@ -133,10 +120,6 @@ create_vcpu(struct vcpu_snapshot *snapshot)
 
   vcpu = calloc(sizeof(struct vcpu), 1);
   vcpu->vcpuid = vcpuid;
-
-  if (snapshot) {
-    restore_vcpu(snapshot);
-  }
 
   pthread_rwlock_wrlock(&alloc_lock);
   list_add(&vcpu->list, &vcpus);
@@ -150,7 +133,7 @@ destroy_vcpu(void)
   pthread_rwlock_wrlock(&alloc_lock);
   list_del(&vcpu->list);
   nr_vcpus--;
-  hv_vcpu_destroy(vcpu->vcpuid);
+  vmm_cpu_destroy(vm, vcpu->vcpuid);
   free(vcpu);
   vcpu = NULL;
   pthread_rwlock_unlock(&alloc_lock);
@@ -161,263 +144,78 @@ print_regs()
 {
   uint64_t value;
 
-  read_register(HV_X86_RIP, &value);
+  read_register(VMM_X64_RIP, &value);
   printk("\trip = 0x%llx\n", value);
-  read_register(HV_X86_RAX, &value);
+  read_register(VMM_X64_RAX, &value);
   printk("\trax = 0x%llx\n", value);
-  read_register(HV_X86_RBX, &value);
+  read_register(VMM_X64_RBX, &value);
   printk("\trbx = 0x%llx\n", value);
-  read_register(HV_X86_RCX, &value);
+  read_register(VMM_X64_RCX, &value);
   printk("\trcx = 0x%llx\n", value);
-  read_register(HV_X86_RDX, &value);
+  read_register(VMM_X64_RDX, &value);
   printk("\trdx = 0x%llx\n", value);
-  read_register(HV_X86_RDI, &value);
+  read_register(VMM_X64_RDI, &value);
   printk("\trdi = 0x%llx\n", value);
-  read_register(HV_X86_RSI, &value);
+  read_register(VMM_X64_RSI, &value);
   printk("\trsi = 0x%llx\n", value);
-  read_register(HV_X86_RBP, &value);
+  read_register(VMM_X64_RBP, &value);
   printk("\trbp = 0x%llx\n", value);
 }
 
 void
 dump_instr()
 {
-  uint64_t instlen, rip;
-  read_vmcs(VMCS_RO_VMEXIT_INSTR_LEN, &instlen);
-  read_register(HV_X86_RIP, &rip);
-  char inst_str[instlen * 3 + 1];
-  for (size_t i = 0; i < instlen; i ++) {
-    unsigned char *ip = guest_to_host(rip);
-    if (ip) {
-      sprintf(inst_str + 3 * i, "%02x ", ip[i]);
-    } else {
-      printk("rip is in invalid user address: 0x%016llx\n", rip);
-      // send_signal(getpid(), LINUX_SIGSEGV);
-      return;
-    }
-  }
-  inst_str[instlen * 3] = '\0';
-  printk("len: %lld, instruction: %s\n", instlen, inst_str);
+  // TODO
+  printk("dump_instr() is not implementd yet on cross platform.\n");
 }
 
 void
-snapshot_vcpu(struct vcpu_snapshot *snapshot)
-{
-  /* snapshot registers */
-  for (uint64_t i = 0; i < NR_X86_REG_LIST; i++) {
-    read_register(x86_reg_list[i], &snapshot->vcpu_reg[i]);
-  }
-  /* snapshot vmcs */
-  for (uint64_t i = 0; i < NR_VMCS_FIELD; i++) {
-    read_vmcs(vmcs_field_list[i], &snapshot->vmcs[i]);
-  }
-  hv_vcpu_read_fpstate(vcpu->vcpuid, snapshot->fpu_states, sizeof snapshot->fpu_states);
-}
-
-void
-snapshot_vm(struct vm_snapshot *snapshot)
-{
-  printk("vm_snapshot\n");
-
-  pthread_rwlock_rdlock(&alloc_lock);
-
-  if (nr_vcpus > 1) {
-    fprintf(stderr, "multi-threaded fork is not implemented yet.\n");
-    exit(1);
-  }
-
-  snapshot_vcpu(&snapshot->first_vcpu_snapshot);
-
-  pthread_rwlock_unlock(&alloc_lock);
-}
-
-void init_msr(); // TODO: save and resotre MSR. just call init_msr in main.c now
-
-void
-restore_vcpu(struct vcpu_snapshot *snapshot)
-{
-  /* restore vmcs */
-  static const uint32_t restore_mask[] = {
-    VMCS_VPID,
-    VMCS_HOST_ES,
-    VMCS_HOST_CS,
-    VMCS_HOST_SS,
-    VMCS_HOST_DS,
-    VMCS_HOST_FS,
-    VMCS_HOST_GS,
-    VMCS_HOST_TR,
-    VMCS_HOST_IA32_PAT,
-    VMCS_HOST_IA32_EFER,
-    VMCS_HOST_IA32_PERF_GLOBAL_CTRL,
-    VMCS_GUEST_PHYSICAL_ADDRESS,
-    VMCS_RO_INSTR_ERROR,
-    VMCS_RO_EXIT_REASON,
-    VMCS_RO_VMEXIT_IRQ_INFO,
-    VMCS_RO_VMEXIT_IRQ_ERROR,
-    VMCS_RO_IDT_VECTOR_INFO,
-    VMCS_RO_IDT_VECTOR_ERROR,
-    VMCS_RO_VMEXIT_INSTR_LEN,
-    VMCS_RO_VMX_INSTR_INFO,
-    VMCS_RO_EXIT_QUALIFIC,
-    VMCS_RO_IO_RCX,
-    VMCS_RO_IO_RSI,
-    VMCS_RO_IO_RDI,
-    VMCS_RO_IO_RIP,
-    VMCS_RO_GUEST_LIN_ADDR,
-    VMCS_HOST_CR0,
-    VMCS_HOST_CR3,
-    VMCS_HOST_CR4,
-    VMCS_HOST_FS_BASE,
-    VMCS_HOST_GS_BASE,
-    VMCS_HOST_TR_BASE,
-    VMCS_HOST_GDTR_BASE,
-    VMCS_HOST_IDTR_BASE,
-    VMCS_HOST_IA32_SYSENTER_ESP,
-    VMCS_HOST_IA32_SYSENTER_EIP,
-    VMCS_HOST_RSP,
-    VMCS_HOST_RIP,
-  };
-
-  for (uint64_t i = 0; i < NR_VMCS_FIELD; i++) {
-    for (uint64_t j = 0; j < sizeof restore_mask / sizeof restore_mask[0]; j++) {
-      if (restore_mask[j] == vmcs_field_list[i]) {
-        goto cont;
-      }
-    }
-    write_vmcs(vmcs_field_list[i], snapshot->vmcs[i]);
-cont: ;
-  }
-
-  /* restore registers */
-  for (uint64_t i = 0; i < NR_X86_REG_LIST; i++) {
-    write_register(x86_reg_list[i], snapshot->vcpu_reg[i]);
-  }
-
-  /* restore fpu states */
-  hv_vcpu_write_fpstate(vcpu->vcpuid, snapshot->fpu_states, sizeof snapshot->fpu_states);
-
-  /* restore MSRs. Initializing them is enough now */
-  init_msr();
-}
-
-bool
-restore_ept()
-{
-  struct list_head *list;
-
-  list_for_each (list, &vkern_mm.mm_regions) {
-    struct mm_region *p = list_entry(list, struct mm_region, list);
-    if (hv_vm_map(p->haddr, p->gaddr, p->size, linux_mprot_to_hv_mflag(p->prot)) != HV_SUCCESS)
-      return false;
-  }
-  list_for_each (list, &proc.mm->mm_regions) {
-    struct mm_region *p = list_entry(list, struct mm_region, list);
-    if (hv_vm_map(p->haddr, p->gaddr, p->size, linux_mprot_to_hv_mflag(p->prot)) != HV_SUCCESS)
-      return false;
-  }
-  return true;
-}
-
-void
-restore_vm(struct vm_snapshot *snapshot)
-{
-  hv_return_t ret;
-
-  printk("restore_vm\n");
-  bool retried = false;
-retry:
-  ret = hv_vm_create(HV_VM_DEFAULT);
-  if (ret != HV_SUCCESS) {
-    if (!retried && ret == HV_NO_DEVICE) {
-      sleep(0);
-      retried = true;
-      printk("retried\n");
-      goto retry;
-    }
-    panic("could not create the vm: error code %x", ret);
-    return;
-  }
-  printk("successfully created vm\n");
-
-  pthread_rwlock_rdlock(&alloc_lock);
-
-  if (nr_vcpus > 1) {
-    fprintf(stderr, "multi-threaded fork is not implemented yet.\n");
-    exit(1);
-  }
-
-  ret = hv_vcpu_create(&vcpu->vcpuid, HV_VCPU_DEFAULT);
-  if (ret != HV_SUCCESS) {
-    panic("could not create a vcpu: error code %x", ret);
-    return;
-  }
-  restore_vcpu(&snapshot->first_vcpu_snapshot);
-
-  pthread_rwlock_unlock(&alloc_lock);
-  printk("vcpu_restore done\n");
-
-  restore_ept();
-  printk("ept_restore done\n");
-
-}
-
-void
-read_register(hv_x86_reg_t reg, uint64_t *val)
-{
-  if (hv_vcpu_read_register(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
-    fprintf(stderr, "read_register failed\n");
-    abort();
-  }
-}
-
-void
-write_register(hv_x86_reg_t reg, uint64_t val) {
-  if (hv_vcpu_write_register(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
+read_register(vmm_x64_reg_t reg, uint64_t *val) {
+  if (vmm_cpu_get_register(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
     fprintf(stderr, "write_register failed\n");
     abort();
   }
 }
 
 void
-read_msr(hv_x86_reg_t reg, uint64_t *val)
+write_register(vmm_x64_reg_t reg, uint64_t val) {
+  if (vmm_cpu_set_register(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
+    fprintf(stderr, "write_register failed\n");
+    abort();
+  }
+}
+
+void
+read_msr(vmm_x64_reg_t reg, uint64_t *val)
 {
-  if (hv_vcpu_read_msr(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
+  if (vmm_cpu_get_msr(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
     fprintf(stderr, "read_msr failed\n");
     abort();
   }
 }
 
 void
-write_msr(hv_x86_reg_t reg, uint64_t val) {
-  if (hv_vcpu_write_msr(vcpu->vcpuid, reg, val) != HV_SUCCESS) {
+write_msr(vmm_x64_reg_t reg, uint64_t val) {
+  if (vmm_cpu_set_msr(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
     fprintf(stderr, "write_msr failed\n");
     abort();
-  }
-}
-
-void
-read_vmcs(hv_x86_reg_t field, uint64_t *val)
-{
-  if (hv_vmx_vcpu_read_vmcs(vcpu->vcpuid, field, val) != HV_SUCCESS) {
-    fprintf(stderr, "read_vmcs failed\n");
-    abort();
-  }
-}
-
-void
-write_vmcs(hv_x86_reg_t field, uint64_t val) {
-  if (hv_vmx_vcpu_write_vmcs(vcpu->vcpuid, field, val) != HV_SUCCESS) {
-    /* FIXME! it fails for the VMCS_CTRL_TSC_OFFSET field on some platforms */
-    //fprintf(stderr, "write_vmcs failed: %s\n", vmcs_field_to_str(field));
-    //    abort();
   }
 }
 
 int
 run_vcpu()
 {
-  if (hv_vcpu_run(vcpu->vcpuid) == HV_SUCCESS) {
+  if (vmm_cpu_run(vm, vcpu->vcpuid) == VMM_SUCCESS) {
     return 0;
   }
   return -1;
+}
+
+void
+get_vcpu_state(int id, uint64_t *val)
+{
+  if (vmm_cpu_get_state(vm, vcpu->vcpuid, id, val) != VMM_SUCCESS) {
+    fprintf(stderr, "get_vcpu_state failed\n");
+    abort();
+  }
 }

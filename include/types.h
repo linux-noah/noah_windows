@@ -2,6 +2,7 @@
 #define NOAH_TYPES_H
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <unistd.h>
 

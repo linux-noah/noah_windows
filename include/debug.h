@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <Hypervisor/hv.h>
 #include <stdnoreturn.h>
 
 void init_sink(const char *fn, FILE **sinkp, const char *name);

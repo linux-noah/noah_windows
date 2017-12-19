@@ -116,27 +116,7 @@ do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, o
   do_munmap(addr, len);
   record_region(proc.mm, ptr, addr, len, l_prot, l_flags, fd, offset);
 
-  vm_mmap(addr, len, linux_mprot_to_hv_mflag(l_prot), ptr);
+  vm_mmap(addr, len, linux_to_darwin_mprot(l_prot), ptr);
 
   return addr;
-}
-
-int
-hv_mflag_to_linux_mprot(hv_memory_flags_t mflag)
-{
-  int l_prot = 0;
-  if (mflag & HV_MEMORY_READ) l_prot |= LINUX_PROT_READ;
-  if (mflag & HV_MEMORY_WRITE) l_prot |= LINUX_PROT_WRITE;
-  if (mflag & HV_MEMORY_EXEC) l_prot |= LINUX_PROT_EXEC;
-  return l_prot;
-}
-
-hv_memory_flags_t
-linux_mprot_to_hv_mflag(int mprot)
-{
-  hv_memory_flags_t mflag = 0;
-  if (mprot & LINUX_PROT_READ) mflag |= HV_MEMORY_READ;
-  if (mprot & LINUX_PROT_WRITE) mflag |= HV_MEMORY_WRITE;
-  if (mprot & LINUX_PROT_EXEC) mflag |= HV_MEMORY_EXEC;
-  return mflag;
 }

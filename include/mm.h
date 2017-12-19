@@ -41,7 +41,7 @@ void init_segment();
 void init_mm(struct mm *mm);
 void init_shm_malloc();
 
-gaddr_t kmap(void *ptr, size_t size, hv_memory_flags_t flags);
+gaddr_t kmap(void *ptr, size_t size, int flags);
 
 RB_PROTOTYPE(mm_region_tree, mm_region, tree, mm_region_cmp);
 int region_compare(struct mm_region *r1, struct mm_region *r2);
@@ -55,8 +55,5 @@ bool is_region_private(struct mm_region*);
 
 gaddr_t do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, off_t offset);
 int do_munmap(gaddr_t gaddr, size_t size);
-
-int hv_mflag_to_linux_mprot(hv_memory_flags_t mflag);
-hv_memory_flags_t linux_mprot_to_hv_mflag(int mprot);
 
 #endif

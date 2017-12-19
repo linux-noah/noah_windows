@@ -171,6 +171,8 @@ int linux_to_darwin_signal(int signum);
 int darwin_to_linux_signal(int signum);
 void darwin_to_linux_rlimit(int resource, struct rlimit *darwin_rlimit, struct l_rlimit *linux_rlimit);
 void darwin_to_linux_rlimit_nofile(struct rlimit *darwin_rlimit, struct l_rlimit *linux_rlimit);
+int darwin_to_linux_mprot(int darwin_prot);
+int linux_to_darwin_mprot(int linux_prot);
 
 
 /* debug */

@@ -393,6 +393,14 @@ int vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value) {
       }
       break;
     }
+    case VMM_CTRL_EXCEPTION_VECTOR: {
+      uint64_t exc_info;
+      hv_return_t err = hv_vmx_vcpu_read_vmcs(vmm_vcpuid, VMCS_RO_VMEXIT_IRQ_INFO, &exc_info);
+      if (err != HV_SUCCESS)
+        return tr_ret(err);
+      *value = exc_info & 0xff;
+      break;
+    }
     default:
       return VMM_EINVAL;
   }

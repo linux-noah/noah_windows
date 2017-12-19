@@ -9,6 +9,7 @@
 #include "linux/ioctl.h"
 #include "linux/termios.h"
 #include "linux/signal.h"
+#include "linux/mman.h"
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -33,6 +34,7 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <signal.h>
+#include <sys/mman.h>
 
 int
 linux_to_darwin_at_flags(int flags)
@@ -611,3 +613,28 @@ darwin_to_linux_flock(struct flock *darwin_flock, struct l_flock *linux_flock)
   linux_flock->l_pid = (l_pid_t)darwin_flock->l_pid;
 }
 
+int
+darwin_to_linux_mprot(int darwin_prot)
+{
+  int linux_prot = 0;
+  if (darwin_prot & PROT_READ)
+    linux_prot |= LINUX_PROT_READ;
+  if (darwin_prot & PROT_WRITE)
+    linux_prot |= LINUX_PROT_WRITE;
+  if (darwin_prot & PROT_EXEC)
+    linux_prot |= LINUX_PROT_EXEC;
+  return linux_prot;
+}
+
+int
+linux_to_darwin_mprot(int linux_prot)
+{
+  int darwin_prot = 0;
+  if (linux_prot & LINUX_PROT_READ)
+    darwin_prot |= PROT_READ;
+  if (linux_prot & LINUX_PROT_WRITE)
+    darwin_prot |= PROT_WRITE;
+  if (linux_prot & LINUX_PROT_EXEC)
+    darwin_prot |= PROT_EXEC;
+  return darwin_prot;
+}

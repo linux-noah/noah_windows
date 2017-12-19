@@ -26,7 +26,7 @@ void init_mmap(struct mm *mm);
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 
 gaddr_t
-kmap(void *ptr, size_t size, hv_memory_flags_t flags)
+kmap(void *ptr, size_t size, int flags)
 {
   static uint64_t noah_kern_brk = user_addr_max;
 
@@ -35,7 +35,7 @@ kmap(void *ptr, size_t size, hv_memory_flags_t flags)
 
   pthread_rwlock_wrlock(&vkern_mm.alloc_lock);
 
-  record_region(&vkern_mm, ptr, noah_kern_brk, size, hv_mflag_to_linux_mprot(flags), -1, -1, 0);
+  record_region(&vkern_mm, ptr, noah_kern_brk, size, darwin_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
@@ -57,11 +57,11 @@ uint64_t pdp[NR_PAGE_ENTRY] __page_aligned = {
 void
 init_page()
 {
-  pml4_ptr = kmap(pml4, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE);
-  pml4[0] |= kmap(pdp, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE) & 0x000ffffffffff000ul;
+  pml4_ptr = kmap(pml4, 0x1000, PROT_READ | PROT_WRITE);
+  pml4[0] |= kmap(pdp, 0x1000, PROT_READ | PROT_WRITE) & 0x000ffffffffff000ul;
 
-  write_vmcs(VMCS_GUEST_CR0, CR0_PG | CR0_PE | CR0_NE);
-  write_vmcs(VMCS_GUEST_CR3, pml4_ptr);
+  write_register(VMM_X64_CR0, CR0_PG | CR0_PE | CR0_NE);
+  write_register(VMM_X64_CR3, pml4_ptr);
 }
 
 uint64_t gdt[3] __page_aligned = {
@@ -74,60 +74,65 @@ gaddr_t gdt_ptr;
 void
 init_segment()
 {
-  kmap(gdt, 0x1000, HV_MEMORY_READ | HV_MEMORY_WRITE);
+  kmap(gdt, 0x1000, PROT_READ | PROT_WRITE);
 
-  write_vmcs(VMCS_GUEST_GDTR_BASE, gdt_ptr);
-  write_vmcs(VMCS_GUEST_GDTR_LIMIT, 3 * 8 - 1);
+  write_register(VMM_X64_GDT_BASE, gdt_ptr);
+  write_register(VMM_X64_GDT_LIMIT, 3 * 8 - 1);
 
-  write_vmcs(VMCS_GUEST_TR_BASE, 0);
-  write_vmcs(VMCS_GUEST_TR_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_TR_AR, 0x0000008b);
+  write_register(VMM_X64_TR, 0);
+  write_register(VMM_X64_TSS_BASE, 0);
+  write_register(VMM_X64_TSS_LIMIT, 0);
+  write_register(VMM_X64_TSS_AR, 0x0000008b);
 
-  write_vmcs(VMCS_GUEST_LDTR_BASE, 0);
-  write_vmcs(VMCS_GUEST_LDTR_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_LDTR_AR, DESC_UNUSABLE);
+  static const uint64_t desc_unusable = 0x00010000;
+  static const uint32_t code_ar = 0x0000209B;
+  static const uint32_t data_ar = 0x00000093;
 
-  write_vmcs(VMCS_GUEST_IDTR_BASE, 0);
-  write_vmcs(VMCS_GUEST_IDTR_LIMIT, 0xffff);
+  write_register(VMM_X64_LDT_BASE, 0);
+  write_register(VMM_X64_LDT_LIMIT, 0);
+  write_register(VMM_X64_LDT_AR, desc_unusable);
 
-  uint32_t codeseg_ar = 0x0000209B;
-  uint32_t dataseg_ar = 0x00000093;
-  write_vmcs(VMCS_GUEST_CS_BASE, 0);
-  write_vmcs(VMCS_GUEST_CS_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_CS_AR, codeseg_ar);
+  write_register(VMM_X64_IDT_BASE, 0);
+  write_register(VMM_X64_IDT_LIMIT, 0xffff);
 
-  write_vmcs(VMCS_GUEST_DS_BASE, 0);
-  write_vmcs(VMCS_GUEST_DS_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_DS_AR, dataseg_ar);
+  write_register(VMM_X64_CS, 0x8);
+  write_register(VMM_X64_CS_BASE, 0);
+  write_register(VMM_X64_CS_LIMIT, 0);
+  write_register(VMM_X64_CS_AR, code_ar);
 
-  write_vmcs(VMCS_GUEST_ES, 0);
-  write_vmcs(VMCS_GUEST_ES_BASE, 0);
-  write_vmcs(VMCS_GUEST_ES_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_ES_AR, dataseg_ar);
+  write_register(VMM_X64_DS, 0x10);
+  write_register(VMM_X64_DS_BASE, 0);
+  write_register(VMM_X64_DS_LIMIT, 0);
+  write_register(VMM_X64_DS_AR, data_ar);
 
-  write_vmcs(VMCS_GUEST_FS, 0);
-  write_vmcs(VMCS_GUEST_FS_BASE, 0);
-  write_vmcs(VMCS_GUEST_FS_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_FS_AR, dataseg_ar);
+  write_register(VMM_X64_ES, 0x10);
+  write_register(VMM_X64_ES_BASE, 0);
+  write_register(VMM_X64_ES_LIMIT, 0);
+  write_register(VMM_X64_ES_AR, data_ar);
 
-  write_vmcs(VMCS_GUEST_GS, 0);
-  write_vmcs(VMCS_GUEST_GS_BASE, 0);
-  write_vmcs(VMCS_GUEST_GS_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_GS_AR, dataseg_ar);
+  write_register(VMM_X64_FS, 0x10);
+  write_register(VMM_X64_FS_BASE, 0);
+  write_register(VMM_X64_FS_LIMIT, 0);
+  write_register(VMM_X64_FS_AR, data_ar);
 
-  write_vmcs(VMCS_GUEST_SS, 0);
-  write_vmcs(VMCS_GUEST_SS_BASE, 0);
-  write_vmcs(VMCS_GUEST_SS_LIMIT, 0);
-  write_vmcs(VMCS_GUEST_SS_AR, dataseg_ar);
+  write_register(VMM_X64_GS, 0x10);
+  write_register(VMM_X64_GS_BASE, 0);
+  write_register(VMM_X64_GS_LIMIT, 0);
+  write_register(VMM_X64_GS_AR, data_ar);
 
-  write_register(HV_X86_CS, GSEL(SEG_CODE, 0));
-  write_register(HV_X86_DS, GSEL(SEG_DATA, 0));
-  write_register(HV_X86_ES, GSEL(SEG_DATA, 0));
-  write_register(HV_X86_FS, GSEL(SEG_DATA, 0));
-  write_register(HV_X86_GS, GSEL(SEG_DATA, 0));
-  write_register(HV_X86_SS, GSEL(SEG_DATA, 0));
-  write_register(HV_X86_TR, 0);
-  write_register(HV_X86_LDTR, 0);
+  write_register(VMM_X64_SS, 0x10);
+  write_register(VMM_X64_SS_BASE, 0);
+  write_register(VMM_X64_SS_LIMIT, 0);
+  write_register(VMM_X64_SS_AR, data_ar);
+
+  write_register(VMM_X64_CS, GSEL(SEG_CODE, 0));
+  write_register(VMM_X64_DS, GSEL(SEG_DATA, 0));
+  write_register(VMM_X64_ES, GSEL(SEG_DATA, 0));
+  write_register(VMM_X64_FS, GSEL(SEG_DATA, 0));
+  write_register(VMM_X64_GS, GSEL(SEG_DATA, 0));
+  write_register(VMM_X64_SS, GSEL(SEG_DATA, 0));
+  write_register(VMM_X64_TR, 0);
+  write_register(VMM_X64_LDTR, 0);
 }
 
 void

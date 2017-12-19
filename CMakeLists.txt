@@ -32,6 +32,8 @@ include_directories(
     ${hypervisor_BINARY_DIR}/include
 )
 
+target_link_libraries(noah hypervisor)
+
 install(PROGRAMS bin/noah DESTINATION bin)
 install(TARGETS noah DESTINATION libexec)
 

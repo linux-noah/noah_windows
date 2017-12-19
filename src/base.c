@@ -108,7 +108,7 @@ DEFINE_SYSCALL(unimplemented)
 {
   uint64_t rax;
 
-  read_register(HV_X86_RAX, &rax);
+  read_register(VMM_X64_RAX, &rax);
 
   warnk("unimplemented syscall: %lld\n", rax);
   return -LINUX_ENOSYS;

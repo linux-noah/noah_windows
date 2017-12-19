@@ -1,7 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <Hypervisor/hv.h>
-#include <Hypervisor/hv_vmx.h>
 #include <stdarg.h>
 #include <time.h>
 #include <pthread.h>
