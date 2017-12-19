@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <libgen.h>
 #include <sys/syslimits.h>
+#include <vmm.h>
 
 #include "vm.h"
 #include "mm.h"

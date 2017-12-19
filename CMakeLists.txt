@@ -8,7 +8,6 @@ configure_file(include/version.h.in ${PROJECT_SOURCE_DIR}/include/version.h)
 set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-parameter -std=gnu11")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
-include_directories(include)
 
 add_executable(noah
   src/main.c
@@ -25,6 +24,13 @@ add_executable(noah
   src/fs/fs.c
   )
 target_link_libraries(noah pthread "-framework Hypervisor")
+
+add_subdirectory(lib/libhypervisor)
+include_directories(
+    include
+    lib/libhypervisor/include
+    ${hypervisor_BINARY_DIR}/include
+)
 
 install(PROGRAMS bin/noah DESTINATION bin)
 install(TARGETS noah DESTINATION libexec)
