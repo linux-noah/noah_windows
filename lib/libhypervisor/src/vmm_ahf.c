@@ -385,6 +385,9 @@ int vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value) {
           inc_rip_to_next();
           *value = VMM_EXIT_IO; 
           break;
+        case VMX_REASON_EXC_NMI:
+          *value = VMM_EXIT_EXCEPTION;
+          break;
         default:
           *value = VMM_EXIT_REASONS_MAX;
           fprintf(stderr, "UNKOWN EXIT_REASON: 0x%llx\n", exit_reason);
