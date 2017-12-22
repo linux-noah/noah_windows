@@ -1,21 +1,15 @@
 node {
-  try {
     stage "Clone Repository"
     checkout scm
     sh "git clean -fx"
 
-    stage "Build Noah"
+    stage "Build"
     sh '''mkdir -p build
       cd build
       cmake -DCMAKE_BUILD_TYPE=Release ..
       make'''
 
-    stage "User Program Test"
+    stage "Test"
     sh '''cd build
       make test ARGS=-V'''
-  } catch (e) {
-    currentBuild.result = "FAILED"
-    slackSend message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
-    throw e
-  }
 }
