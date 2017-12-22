@@ -22,7 +22,6 @@ node {
   } finally {
     notifyBuild(currentBuild.result)
   }
-  slackSend (color: colorCode, message: summary)
 }
 
 def notifyBuild(String buildStatus) {
