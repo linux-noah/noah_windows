@@ -21,5 +21,13 @@ node {
 
 def notifyBuild(String buildStatus) {
 
+  buildStatus.result = buildStatus ?: 'SUCCESSFUL'
+
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+  def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+
+
   slackSend message: buildStatus
 }
