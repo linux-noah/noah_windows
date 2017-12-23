@@ -5,15 +5,17 @@
 #include <cstring>
 #include <string>
 #include <fcntl.h>
+#include <getopt.h>
 
-#if defined(__unix__) || defined(TARGET_MAC_OS)
+#if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
 #include <sys/sysctl.h>
-#ifdef TARGET_MAC_OS
+#ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
 #endif
 
+extern "C" {
 #include "common.h"
 #include "vm.h"
 #include "mm.h"
@@ -24,6 +26,7 @@
 #include "x86/specialreg.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
+}
 
 static bool
 is_syscall(uint64_t rip)
@@ -238,9 +241,9 @@ static void
 init_first_proc(const char *root)
 {
   proc = (struct proc) {
-    .nr_tasks = 1,foo
+    .nr_tasks = 1,
     .lock = PTHREAD_RWLOCK_INITIALIZER,
-    .mm = malloc(sizeof(struct mm)),
+    .mm = (struct mm *)malloc(sizeof(struct mm)),
   };
   INIT_LIST_HEAD(&proc.tasks);
   list_add(&task.head, &proc.tasks);
