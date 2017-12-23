@@ -36,20 +36,10 @@ ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 
 /* linux emulation */
 
-uint64_t do_gettid(void);
 int do_exec(const char *elf_path, int argc, char *argv[], char **envp);
-int do_faccessat(int l_dirfd, const char *l_path, int l_mode);
-int do_access(const char *path, int l_mode);
-int do_futex_wake(gaddr_t uaddr, int count);
-int user_open(const char *path, int flags, int mode);
 int vkern_open(const char *path, int flags, int mode);
-int user_openat(int fd, const char *path, int flags, int mode);
 int vkern_openat(int fd, const char *path, int flags, int mode);
-int user_close(int fd);
 int vkern_close(int fd);
-void close_cloexec();
-int register_fd(int fd, bool is_cloexec);
-int vkern_dup_fd(int fd, bool is_cloexec);
 gaddr_t alloc_region(size_t len);
 
 noreturn void die_with_forcedsig(int sig);
@@ -59,12 +49,14 @@ void main_loop(int return_on_sigret);
 
 #include "linux/signal.h"
 
+/*
 typedef atomic_uint_least64_t atomic_sigbits_t;
 
 #define INIT_SIGBIT(sigbit) (*(sigbit) = ATOMIC_VAR_INIT(0))
 void handle_signal(void);
 bool has_sigpending(void);
 int send_signal(pid_t pid, int sig);
+*/
 
 /* task related data */
 
@@ -74,7 +66,7 @@ struct task {
   uint64_t tid;
   gaddr_t robust_list;
   l_sigset_t sigmask;
-  atomic_sigbits_t sigpending;
+  // atomic_sigbits_t sigpending;
   l_stack_t sas;
 };
 
@@ -158,19 +150,6 @@ struct winsize;
 struct linux_winsize;
 struct rlimit; struct l_rlimit;
 
-int linux_to_darwin_at_flags(int flags);
-int linux_to_darwin_o_flags(int l_flags);
-int darwin_to_linux_o_flags(int r);
-void stat_darwin_to_linux(struct stat *stat, struct l_newstat *lstat);
-void statfs_darwin_to_linux(struct statfs *statfs, struct l_statfs *l_statfs);
-void darwin_to_linux_termios(struct termios *bios, struct linux_termios *lios);
-void linux_to_darwin_termios(struct linux_termios *lios, struct termios *bios);
-void darwin_to_linux_winsize(struct winsize *ws, struct linux_winsize *lws);
-void linux_to_darwin_winsize(struct winsize *ws, struct linux_winsize *lws);
-int linux_to_darwin_signal(int signum);
-int darwin_to_linux_signal(int signum);
-void darwin_to_linux_rlimit(int resource, struct rlimit *darwin_rlimit, struct l_rlimit *linux_rlimit);
-void darwin_to_linux_rlimit_nofile(struct rlimit *darwin_rlimit, struct l_rlimit *linux_rlimit);
 int darwin_to_linux_mprot(int darwin_prot);
 int linux_to_darwin_mprot(int linux_prot);
 
