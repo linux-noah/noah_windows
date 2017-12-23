@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(noah VERSION 0.5.0)
+project(noah 
+  VERSION 0.5.0
+  LANGUAGES C CXX)
 
 configure_file(bin/noah.in ${PROJECT_SOURCE_DIR}/bin/noah @ONLY)
 configure_file(include/version.h.in ${PROJECT_SOURCE_DIR}/include/version.h)
@@ -10,7 +12,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fsanitize=address -fno-o
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 
 add_executable(noah
-  src/main.c
+  src/main.cpp
   src/vmm.c
   src/meta_strace.c
   src/base.c
@@ -23,16 +25,25 @@ add_executable(noah
   src/mm/malloc.c
   src/fs/fs.c
   )
-target_link_libraries(noah pthread "-framework Hypervisor")
 
 add_subdirectory(lib/libhypervisor)
 include_directories(
-    include
-    lib/libhypervisor/include
-    ${hypervisor_BINARY_DIR}/include
+  include
+  lib/libhypervisor/include
+  ${hypervisor_BINARY_DIR}/include
 )
 
 target_link_libraries(noah hypervisor)
+
+set(Boost_USE_MULTITHREADED ON)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set(BOOST_ROOT "C:\\Program Files\\boost_1_66_0")
+  set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_66_0\\lib")
+endif()
+find_package(Boost 1.65 REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
+target_link_libraries(noah ${Boost_LIBRARIES})
 
 install(PROGRAMS bin/noah DESTINATION bin)
 install(TARGETS noah DESTINATION libexec)

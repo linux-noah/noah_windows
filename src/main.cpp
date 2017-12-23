@@ -1,13 +1,18 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <cpuid.h>
-#include <getopt.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #include <string.h>
-#include <sys/syslimits.h>
-#include <libgen.h>
-#include <strings.h>
+#include <cstring>
+#include <string>
 #include <fcntl.h>
+
+#if defined(__unix__) || defined(TARGET_MAC_OS)
+#include <sys/mman.h>
+#include <sys/sysctl.h>
+#ifdef TARGET_MAC_OS
+#include <mach-o/dyld.h>
+#endif
+#endif
 
 #include "common.h"
 #include "vm.h"
@@ -19,16 +24,13 @@
 #include "x86/specialreg.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
-#include <sys/sysctl.h>
-#include <sys/mman.h>
-
-#include <mach-o/dyld.h>
 
 static bool
 is_syscall(uint64_t rip)
 {
   static const ushort OP_SYSCALL = 0x050f;
   ushort op;
+
   if (copy_from_user(&op, rip, sizeof op))
     return false;
   return op == OP_SYSCALL;
@@ -236,7 +238,7 @@ static void
 init_first_proc(const char *root)
 {
   proc = (struct proc) {
-    .nr_tasks = 1,
+    .nr_tasks = 1,foo
     .lock = PTHREAD_RWLOCK_INITIALIZER,
     .mm = malloc(sizeof(struct mm)),
   };
