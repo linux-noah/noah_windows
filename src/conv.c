@@ -11,9 +11,25 @@
 #include "linux/signal.h"
 #include "linux/mman.h"
 
+#if defined(__unix__) || defined(TARGET_OS_MAC)
 #include <unistd.h>
-#include <sys/stat.h>
 #include <termios.h>
+#include <unistd.h>
+#include <sys/uio.h>
+#include <sys/syscall.h>
+#include <sys/select.h>
+#include <sys/poll.h>
+#include <sys/mount.h>
+#include <dirent.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#ifdef TARGET_OS_MAC
+#include <sys/syslimits.h>
+#endif
+#endif
+
+#include <sys/stat.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,21 +37,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/uio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/syscall.h>
-#include <sys/select.h>
-#include <sys/poll.h>
-#include <sys/mount.h>
-#include <sys/syslimits.h>
-#include <dirent.h>
-#include <termios.h>
-#include <sys/ioctl.h>
 #include <signal.h>
-#include <sys/mman.h>
-
 
 
 int

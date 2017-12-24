@@ -2,6 +2,7 @@
 #define NOAH_X86_VM_H
 
 #include <stdint.h>
+#include "cross_platform.h"
 
 /* pages */
 
@@ -29,6 +30,7 @@ static inline int is_page_aligned(void *addr, page_type_t page)
 
 /* idt */
 
+PACK(
 struct gate_desc {
   uint64_t offset_low:16;
   uint64_t selector:16;
@@ -40,7 +42,7 @@ struct gate_desc {
   uint64_t p:1;
   uint64_t offset_high:48;
   uint64_t zero2:32;
-} __attribute__ ((packed));
+});
 
 /* VM parameter */
 #define STACK_SIZE (1 << 21)
@@ -73,6 +75,7 @@ struct gate_desc {
     .xx2 = 0,                          \
   }
 
+PACK(
 struct segment_desc {
   u_int64_t offset_low:16;	/* segment extent (lsb) */
   u_int64_t base_low:24;		/* segment base address (lsb) */
@@ -84,10 +87,10 @@ struct segment_desc {
   u_int64_t l:1;			/* unused */
   u_int64_t db:1;			/* unused */
   u_int64_t gran:1;		/* limit granularity (byte/page units)*/
-  u_int64_t base_high:40 __attribute__ ((packed));/* segment base address  (msb) */
+  u_int64_t base_high:40;/* segment base address  (msb) */
   u_int64_t xx1:8;
   u_int64_t mbz:5;		/* MUST be zero */
   u_int64_t xx2:19;
-} __attribute__ ((packed));
+});
 
 #endif

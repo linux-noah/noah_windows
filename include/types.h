@@ -1,10 +1,15 @@
 #ifndef NOAH_TYPES_H
 #define NOAH_TYPES_H
 
+#if defined(__unix__) || defined(TARGET_OS_MAC)
+#include <unistd.h>
+#elif defined(_WIN32)
+#include <sys/types.h>
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <unistd.h>
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;

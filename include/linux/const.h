@@ -1,6 +1,8 @@
 #ifndef NOAH_CONST_H
 #define NOAH_CONST_H
 
+#include "cross_platform.h"
+
 /*
  *  Constant conversion macros.
  */
@@ -35,13 +37,13 @@
     return "(No " #const_id " Matched)";\
   }
 
-void warnk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void warnk(const char *fmt, ...) ATTR_CHECK_FORMAT(printf, 1, 2);
 
 #define DECLARE_CMAP_FUNC(tag, const_id, const_list)  \
   static inline int tag ## _ ## const_id (int val) {  \
     switch (val) {                                         \
       const_list(tag)                                \
-    }                                                      \
+    };                                                      \
     warnk("unsupported " #const_id " is converted: 0x%x\n", val);     \
     return -1;                                             \
   }

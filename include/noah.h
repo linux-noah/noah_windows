@@ -1,9 +1,12 @@
 #ifndef NOAH_H
 #define NOAH_H
 
-#include <stdint.h>
+#ifndef _WIN32
 #include <pthread.h>
-#include <stdatomic.h>
+#endif
+#include <stdint.h>
+
+#include "cross_platform.h"
 #include "types.h"
 #include "util/misc.h"
 #include "util/list.h"
@@ -11,7 +14,6 @@
 #include "linux/mman.h"
 #include "malloc.h"
 #include "version.h"
-#include <stdnoreturn.h>
 
 #define __page_aligned __attribute__((aligned(0x1000)))
 

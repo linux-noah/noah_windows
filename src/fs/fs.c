@@ -36,8 +36,20 @@
 #include "linux/misc.h"
 #include "linux/errno.h"
 #include "linux/ioctl.h"
-#include "linux/termios.h"
-#include "linux/socket.h"
+
+#ifdef TARGET_OS_MAC
+#include <unistd.h>
+#include <sys/uio.h>
+#include <sys/syscall.h>
+#include <sys/select.h>
+#include <sys/poll.h>
+#include <sys/mount.h>
+#include <sys/syslimits.h>
+#include <dirent.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <mach-o/dyld.h>
+#endif
 
 #include <stddef.h>
 #include <stdio.h>
@@ -47,20 +59,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/uio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/syscall.h>
-#include <sys/select.h>
-#include <sys/poll.h>
-#include <sys/mount.h>
-#include <sys/syslimits.h>
-#include <dirent.h>
-#include <termios.h>
-#include <sys/ioctl.h>
 
-#include <mach-o/dyld.h>
 
 struct dir {
   int fd;

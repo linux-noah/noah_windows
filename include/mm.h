@@ -1,9 +1,12 @@
 #ifndef NOAH_MM_H
 #define NOAH_MM_H
 
+#ifndef _WIN32
 #include <pthread.h>
+#endif
 #include <stdbool.h>
 
+#include "cross_platform.h"
 #include "types.h"
 #include "noah.h"
 #include "util/list.h"

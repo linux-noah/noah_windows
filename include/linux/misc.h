@@ -35,6 +35,8 @@
 #ifndef _AMD64_LINUX_H_
 #define	_AMD64_LINUX_H_
 
+#include "cross_platform.h"
+
 typedef struct {
   l_time_t	tv_sec;
   l_suseconds_t	tv_usec;
@@ -85,6 +87,7 @@ struct l_rlimit {
   l_ulong		rlim_max;
 };
 
+PACK(
 struct l_rusage {
   l_timeval	ru_utime;
   l_timeval	ru_stime;
@@ -102,7 +105,7 @@ struct l_rusage {
   l_long	ru_nsignals;
   l_long	ru_nvcsw;
   l_long	ru_nivcsw;
-} __attribute__ ((packed));
+});
 
 /*
  * poll()

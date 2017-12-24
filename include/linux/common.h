@@ -37,8 +37,6 @@
 
 #include <stdint.h>
 
-#define __packed __attribute__((packed))
-
 typedef unsigned char u_char;
 typedef uint16_t u_int16_t;
 typedef uint32_t u_int32_t;

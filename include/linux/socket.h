@@ -87,6 +87,7 @@ struct l_sockaddr {
   char		sa_data[14];
 };
 
+PACK(
 struct l_ifmap {
   l_ulong	mem_start;
   l_ulong	mem_end;
@@ -94,7 +95,7 @@ struct l_ifmap {
   u_char	irq;
   u_char	dma;
   u_char	port;
-} __packed;
+});
 
 #define	LINUX_IFHWADDRLEN	6
 #define	LINUX_IFNAMSIZ		16
@@ -106,6 +107,7 @@ struct l_sockaddr_nl {
   l_uint nl_groups;
 };
 
+PACK(
 struct l_ifreq {
   union {
     char	ifrn_name[LINUX_IFNAMSIZ];
@@ -124,7 +126,7 @@ struct l_ifreq {
     char		ifru_slave[LINUX_IFNAMSIZ];
     l_uintptr_t		ifru_data;
   } ifr_ifru;
-} __packed;
+});
 
 #define	ifr_name	ifr_ifrn.ifrn_name	/* Interface name */
 #define	ifr_hwaddr	ifr_ifru.ifru_hwaddr	/* MAC address */
