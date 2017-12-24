@@ -76,8 +76,8 @@
 #define LINUX_SIGRTMAX 64
 
 DECLARE_CENUM(signum, LINUX_STSIGNUM);
-DECLARE_CMAP_FUNC(darwin_to_linux, signum, LINUX_STSIGNUM);
-DECLARE_CMAP_FUNC(linux_to_darwin, signum, LINUX_STSIGNUM);
+DECLARE_CMAP_FUNC(native_to_linux, signum, LINUX_STSIGNUM);
+DECLARE_CMAP_FUNC(linux_to_native, signum, LINUX_STSIGNUM);
 DECLARE_CSTR_FUNC(signum, LINUX_STSIGNUM);
 
 
@@ -105,8 +105,8 @@ typedef l_sigset_t sigset_t;
 #else
 #endif
 
-void linux_to_darwin_sigset(l_sigset_t *, sigset_t *);
-void darwin_to_linux_sigset(sigset_t *, l_sigset_t *);
+void linux_to_native_sigset(l_sigset_t *, sigset_t *);
+void native_to_linux_sigset(sigset_t *, l_sigset_t *);
 
 /* primitives to manipulate sigset_t */
 #define	LINUX_SIGEMPTYSET(setp)		((setp)->__mask = 0)
@@ -141,8 +141,8 @@ typedef struct {
 #define LINUX_SIG_IGN ((l_handler_t)1)
 #define LINUX_SIG_ERR ((l_handler_t)-1)
 
-void linux_to_darwin_sigaction(l_sigaction_t *, struct sigaction *, void *);
-void darwin_to_linux_sigaction(struct sigaction *, l_sigaction_t *, gaddr_t);
+void linux_to_native_sigaction(l_sigaction_t *, struct sigaction *, void *);
+void native_to_linux_sigaction(struct sigaction *, l_sigaction_t *, gaddr_t);
 
 typedef struct {
   l_uintptr_t	ss_sp;

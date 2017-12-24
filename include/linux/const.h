@@ -7,13 +7,13 @@
  *  Constant conversion macros.
  */
 
-#define DECL_LINUX_linux_to_darwin(linux, val, darwin, ...) case linux: return (darwin);
-#define DECL_ALIAS_linux_to_darwin(linux, darwin)
-#define FROM_DARWN_linux_to_darwin(linux, darwin)
+#define DECL_LINUX_linux_to_native(linux, val, darwin, ...) case linux: return (darwin);
+#define DECL_ALIAS_linux_to_native(linux, darwin)
+#define FROM_DARWN_linux_to_native(linux, darwin)
 
-#define DECL_LINUX_darwin_to_linux(linux, val, darwin, ...) case darwin: return (linux);
-#define DECL_ALIAS_darwin_to_linux(linux, darwin) 
-#define FROM_DARWN_darwin_to_linux(linux, darwin)           case darwin: return (linux);
+#define DECL_LINUX_native_to_linux(linux, val, darwin, ...) case darwin: return (linux);
+#define DECL_ALIAS_native_to_linux(linux, darwin) 
+#define FROM_DARWN_native_to_linux(linux, darwin)           case darwin: return (linux);
 
 #define DECL_LINUX_constant(const_name, val, ...) const_name = val,
 #define DECL_ALIAS_constant(const_name, val)      const_name = val,

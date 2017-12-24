@@ -57,7 +57,7 @@
 
 #define syswrap(syscall) (errno = 0, _syswrap(syscall))
 static inline int _syswrap(int sys_ret) {
-  return (sys_ret < 0 && errno != 0) ? -darwin_to_linux_errno(errno) : sys_ret;
+  return (sys_ret < 0 && errno != 0) ? -native_to_linux_errno(errno) : sys_ret;
 }
 
 #include "syscall.h"

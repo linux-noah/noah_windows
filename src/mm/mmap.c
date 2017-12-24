@@ -70,7 +70,7 @@ do_munmap(gaddr_t gaddr, size_t size)
 }
 
 static int
-linux_to_darwin_mflags(int l_flags)
+linux_to_native_mflags(int l_flags)
 {
   int d_flags = 0;
   if (l_flags & LINUX_MAP_SHARED) d_flags |= MAP_SHARED;
@@ -108,7 +108,7 @@ do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, o
     addr = alloc_region(len);
   }
 
-  void *ptr = mmap(0, len, d_prot, linux_to_darwin_mflags(l_flags), fd, offset);
+  void *ptr = mmap(0, len, d_prot, linux_to_native_mflags(l_flags), fd, offset);
   if (ptr == MAP_FAILED) {
     panic("mmap failed. addr :0x%llx, len: 0x%lux, prot: %d, l_flags: %d, fd: %d, offset: 0x%llx\n", addr, len, l_prot, l_flags, fd, offset);
   }
@@ -116,7 +116,7 @@ do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, o
   do_munmap(addr, len);
   record_region(proc.mm, ptr, addr, len, l_prot, l_flags, fd, offset);
 
-  vm_mmap(addr, len, linux_to_darwin_mprot(l_prot), ptr);
+  vm_mmap(addr, len, linux_to_native_mprot(l_prot), ptr);
 
   return addr;
 }

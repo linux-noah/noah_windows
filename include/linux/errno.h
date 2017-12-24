@@ -151,7 +151,7 @@
 
 DECLARE_CENUM(errno, LINUX_ERRNO);
 DECLARE_CSTR_FUNC(errno, LINUX_ERRNO);
-DECLARE_CMAP_FUNC(darwin_to_linux, errno, LINUX_ERRNO);
-DECLARE_CMAP_FUNC(linux_to_darwin, errno, LINUX_ERRNO);
+DECLARE_CMAP_FUNC(native_to_linux, errno, LINUX_ERRNO);
+DECLARE_CMAP_FUNC(linux_to_native, errno, LINUX_ERRNO);
 
 #endif

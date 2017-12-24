@@ -235,8 +235,8 @@ struct l_cmsghdr {
   DECL_LINUX(_,AF_INET6,        10)\
 
 DECLARE_CENUM(sa_family, LINUX_AF);
-DECLARE_CMAP_FUNC(darwin_to_linux, sa_family, LINUX_AF);
-DECLARE_CMAP_FUNC(linux_to_darwin, sa_family, LINUX_AF);
+DECLARE_CMAP_FUNC(native_to_linux, sa_family, LINUX_AF);
+DECLARE_CMAP_FUNC(linux_to_native, sa_family, LINUX_AF);
 DECLARE_CSTR_FUNC(sa_family, LINUX_AF);
 
 

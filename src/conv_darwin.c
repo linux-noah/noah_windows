@@ -10,7 +10,6 @@
 #include "linux/termios.h"
 #include "linux/mman.h"
 
-#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <termios.h>
 #include <unistd.h>
@@ -23,10 +22,7 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#ifdef __APPLE__
 #include <sys/syslimits.h>
-#endif
-#endif
 
 #include <sys/stat.h>
 #include <stddef.h>
@@ -42,7 +38,7 @@
 
 
 int
-darwin_to_linux_mprot(int darwin_prot)
+native_to_linux_mprot(int darwin_prot)
 {
   int linux_prot = 0;
   if (darwin_prot & PROT_READ)
@@ -55,7 +51,7 @@ darwin_to_linux_mprot(int darwin_prot)
 }
 
 int
-linux_to_darwin_mprot(int linux_prot)
+linux_to_native_mprot(int linux_prot)
 {
   int darwin_prot = 0;
   if (linux_prot & LINUX_PROT_READ)
@@ -68,7 +64,7 @@ linux_to_darwin_mprot(int linux_prot)
 }
 
 int
-linux_to_darwin_o_flags(int l_flags)
+linux_to_native_o_flags(int l_flags)
 {
   int ret = 0;
   if (l_flags & LINUX_O_PATH) {

@@ -392,7 +392,7 @@ main(int argc, char *argv[], char **envp)
 
   int err;
   if ((err = do_exec(argv[0], argc, argv, envp)) < 0) {
-    errno = linux_to_darwin_errno(-err);
+    errno = linux_to_native_errno(-err);
     perror("Error");
     exit(1);
   }

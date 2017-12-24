@@ -150,8 +150,8 @@ struct winsize;
 struct linux_winsize;
 struct rlimit; struct l_rlimit;
 
-int darwin_to_linux_mprot(int darwin_prot);
-int linux_to_darwin_mprot(int linux_prot);
+int native_to_linux_mprot(int darwin_prot);
+int linux_to_native_mprot(int linux_prot);
 
 
 /* debug */

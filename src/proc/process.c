@@ -30,7 +30,7 @@ struct proc proc;
 _Thread_local struct task task;
 
 
-int linux_to_darwin_waitopts(int options)
+int linux_to_native_waitopts(int options)
 {
   int opts = 0;
   if (options & LINUX_WNOHANG) {
