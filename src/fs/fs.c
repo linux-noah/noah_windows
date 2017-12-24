@@ -119,7 +119,7 @@ struct file_operations {
 int
 darwinfs_openat(struct fs *fs, struct dir *dir, const char *path, int l_flags, int mode)
 {
-  int flags = linux_to_darwin_o_flags(l_flags);
+  int flags = linux_to_native_o_flags(l_flags);
   return syswrap(openat(dir->fd, path, flags, mode));
 }
 

@@ -39,7 +39,7 @@ kmap(void *ptr, size_t size, int flags)
 
   pthread_rwlock_wrlock(&vkern_mm.alloc_lock);
 
-  record_region(&vkern_mm, ptr, noah_kern_brk, size, darwin_to_linux_mprot(flags), -1, -1, 0);
+  record_region(&vkern_mm, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
