@@ -16,7 +16,6 @@ add_executable(noah
   src/vmm.c
   src/meta_strace.c
   src/base.c
-  src/conv.c
   src/debug.c
   src/proc/exec.c
   src/proc/process.c
@@ -24,7 +23,16 @@ add_executable(noah
   src/mm/mmap.c
   src/mm/malloc.c
   src/fs/fs.c
-  )
+)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+add_executable(noah
+  src/conv_windows.c 
+)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+add_executable(noah
+  src/conv_darwin.c 
+)
+endif()
 
 add_subdirectory(lib/libhypervisor)
 include_directories(
