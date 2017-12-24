@@ -1,11 +1,11 @@
+#include <boost/program_options.hpp>
+#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include <string.h>
 #include <cstring>
 #include <string>
 #include <fcntl.h>
-#include <getopt.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
@@ -26,6 +26,7 @@ extern "C" {
 #include "x86/specialreg.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
+#include <getopt.h>
 }
 
 static bool
@@ -327,6 +328,8 @@ check_platform_version(void)
   }
 }
 
+namespace po = boost::program_options;
+
 int
 main(int argc, char *argv[], char **envp)
 {
@@ -334,64 +337,48 @@ main(int argc, char *argv[], char **envp)
 
   check_platform_version();
 
-  char root[PATH_MAX] = {};
+  po::options_description desc("Available options");
+  desc.add_options()
+    ("help,h", "show this message")
+    ("output,o", po::value<std::string>(), "path to log file")
+    ("strace,s", po::value<std::string>(), "path meta strace file")
+    ("warning,w", po::value<std::string>(), "path to warning log file")
+    ("mnt,m", po::value<std::string>()->default_value("~/.noah/tree"), "path to root directory")
+    ("linux_bin,b", po::value<std::string>(), "path to the Linux ELF to execute");
+  po::positional_options_description pos;
+  pos.add("linux_bin", -1);
 
-  int c;
-  enum {PRINTK_PATH, WARNK_PATH, STRACE_PATH, MAX_DEBUG_PATH};
-  char debug_paths[3][PATH_MAX] = {};
-  struct option long_options[] = {
-    { "output", required_argument, NULL, 'o'},
-    { "strace", required_argument, NULL, 's'},
-    { "warning", required_argument, NULL, 'w'},
-    { "mnt", required_argument, NULL, 'm' },
-    { 0, 0, 0, 0 }
-  };
+  po::variables_map opts;
+  po::store(po::command_line_parser(argc, argv)
+              .options(desc)
+              .positional(pos)
+              .run(),
+            opts);
+  po::notify(opts);
 
-  while ((c = getopt_long(argc, argv, "+o:w:s:m:", long_options, NULL)) != -1) {
-    switch (c) {
-    case 'o':
-      strncpy(debug_paths[PRINTK_PATH], optarg, PATH_MAX);
-      break;
-    case 'w':
-      strncpy(debug_paths[WARNK_PATH], optarg, PATH_MAX);
-      break;
-    case 's':
-      strncpy(debug_paths[STRACE_PATH], optarg, PATH_MAX);
-      break;
-    case 'm':
-      if (realpath(optarg, root) == NULL) {
-        perror("Invalid --mnt flag: ");
-        exit(1);
-      }
-      argv[optind - 1] = root;
-      break;
-    }
-  }
-
-  argc -= optind;
-  argv += optind;
-
-  if (argc == 0) {
-    abort();
+  if (opts.count("help") || !opts.count("linux_bin")) {
+    std::cout << "Usage: ./noah linux_bin" << std::endl;
+    std::cout << desc << std::endl;
+    return 1;
   }
 
   create_vm();
+  
+  // TODO: realpath
+  init_vkernel(opts["mnt"].as<std::string>().c_str());
 
-  init_vkernel(root);
-
-  for (int i = PRINTK_PATH; i < MAX_DEBUG_PATH; i++) {
-    static void (* init_funcs[3])(const char *path) = {
-      [PRINTK_PATH] = init_printk,
-      [STRACE_PATH] = init_meta_strace,
-      [WARNK_PATH]  = init_warnk
-    };
-    if (debug_paths[i][0] != '\0') {
-      init_funcs[i](debug_paths[i]);
-    }
+  if (opts.count("output")) {
+    init_printk(opts["output"].as<std::string>().c_str());
+  }
+  if (opts.count("strace")) {
+    init_meta_strace(opts["strace"].as<std::string>().c_str());
+  }
+  if (opts.count("warning")) {
+    init_warnk(opts["warning"].as<std::string>().c_str());
   }
 
   int err;
-  if ((err = do_exec(argv[0], argc, argv, envp)) < 0) {
+  if ((err = do_exec(opts["linux_bin"].as<std::string>().c_str(), argc, argv, envp)) < 0) {
     errno = linux_to_native_errno(-err);
     perror("Error");
     exit(1);
@@ -403,3 +390,4 @@ main(int argc, char *argv[], char **envp)
 
   return 0;
 }
+

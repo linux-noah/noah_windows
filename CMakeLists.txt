@@ -48,7 +48,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   set(BOOST_ROOT "C:\\Program Files\\boost_1_66_0")
   set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_66_0\\lib")
 endif()
-find_package(Boost 1.65 REQUIRED)
+find_package(Boost 1.65 COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 target_link_libraries(noah ${Boost_LIBRARIES})
