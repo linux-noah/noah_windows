@@ -32,19 +32,14 @@
 
 #include <fcntl.h>
 
-#define LINUX_AT(_)\
-  DECL_LINUX(_,AT_FDCWD,             -100)\
-  DECL_LINUX(_,AT_SYMLINK_NOFOLLOW,  0x100)\
-  /* You must treat E_ACCESS as E_REMOVEDIR in unlinkat */\
-  DECL_LINUX(_,AT_EACCESS,           0x200)\
-  DECL_ALIAS(_,AT_REMOVEDIR,         0x200)\
-  DECL_LINUX(_,AT_SYMLINK_FOLLOW,    0x400)\
-  DECL_LINUX(_,AT_NO_AUTOMOUNT,      0x800,\
-                                     LINUX_SPECIFIC)\
-  DECL_LINUX(_,AT_EMPTY_PATH,        0x1000,\
-                                     LINUX_SPECIFIC)\
-
-DECLARE_CENUM(at, LINUX_AT);
+#define LINUX_AT_FDCWD -100
+#define LINUX_AT_SYMLINK_NOFOLLOW 0x100
+/* You must treat E_ACCESS as E_REMOVEDIR in unlinkat */
+#define LINUX_AT_EACCESS 0x200
+#define LINUX_AT_REMOVEDIR 0x200
+#define LINUX_AT_SYMLINK_FOLLOW 0x400
+#define LINUX_AT_NO_AUTOMOUNT 0x800
+#define LINUX_AT_EMPTY_PATH 0x1000
 
 /*
  * posix_fadvise advice
