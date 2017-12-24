@@ -25,11 +25,11 @@ add_executable(noah
   src/fs/fs.c
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-add_executable(noah
+target_sources(noah PUBLIC
   src/conv_windows.c 
 )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_executable(noah
+target_sources(noah PUBLIC
   src/conv_darwin.c 
 )
 endif()
