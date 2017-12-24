@@ -26,7 +26,7 @@ add_executable(noah
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC
-  src/conv_windows.c 
+  src/conv_windows.cpp 
 )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(noah PUBLIC
