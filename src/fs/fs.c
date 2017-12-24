@@ -37,18 +37,20 @@
 #include "linux/errno.h"
 #include "linux/ioctl.h"
 
-#ifdef TARGET_OS_MAC
+#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <sys/uio.h>
 #include <sys/syscall.h>
 #include <sys/select.h>
 #include <sys/poll.h>
 #include <sys/mount.h>
-#include <sys/syslimits.h>
 #include <dirent.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+#ifdef __APPLE__
 #include <mach-o/dyld.h>
+#include <sys/syslimits.h>
+#endif
 #endif
 
 #include <stddef.h>

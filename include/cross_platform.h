@@ -21,7 +21,8 @@
 
 #else
 
-#define ATTR_CHECK_FORMAT(format_func, args...) ATTR_CHECK_FORMAT(format_func, args)));
+#define ATTR_CHECK_FORMAT(format_func, ...) __attribute__((format(format_func, __VA_ARGS__)))
+
 
 #include <stdnoreturn.h>
 #include <pthread.h>

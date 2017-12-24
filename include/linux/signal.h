@@ -99,7 +99,11 @@ typedef struct {
   uint64_t	__mask;
 } l_sigset_t;
 
-typedef l_sigset_t sigset_t;// TODO
+// TODO
+#ifdef _WIN32
+typedef l_sigset_t sigset_t;
+#else
+#endif
 
 void linux_to_darwin_sigset(l_sigset_t *, sigset_t *);
 void darwin_to_linux_sigset(sigset_t *, l_sigset_t *);

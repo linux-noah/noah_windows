@@ -8,10 +8,9 @@
 #include "linux/errno.h"
 #include "linux/ioctl.h"
 #include "linux/termios.h"
-#include "linux/signal.h"
 #include "linux/mman.h"
 
-#if defined(__unix__) || defined(TARGET_OS_MAC)
+#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <termios.h>
 #include <unistd.h>
@@ -24,7 +23,7 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#ifdef TARGET_OS_MAC
+#ifdef __APPLE__
 #include <sys/syslimits.h>
 #endif
 #endif

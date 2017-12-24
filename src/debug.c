@@ -8,6 +8,10 @@
 #include <errno.h>
 #include <string.h>
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
+
 #include "noah.h"
 #include "vm.h"
 #include "linux/time.h"

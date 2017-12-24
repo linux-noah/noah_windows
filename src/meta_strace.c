@@ -6,6 +6,10 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
+
 #include "common.h"
 #include "syscall.h"
 #include "noah.h"
