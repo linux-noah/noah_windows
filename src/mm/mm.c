@@ -1,9 +1,13 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
+#if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
 #include <strings.h>
+#endif
 
+#include "cross_platform.h"
 #include "common.h"
 #include "util/list.h"
 #include "mm.h"
@@ -44,12 +48,13 @@ kmap(void *ptr, size_t size, int flags)
   return noah_kern_brk - size;
 }
 
-uint64_t pml4[NR_PAGE_ENTRY] __page_aligned = {
+TYPEDEF_PAGE_ALIGNED(uint64_t) pe_t[NR_PAGE_ENTRY];
+pe_t pml4 = {
   [0] = PTE_U | PTE_W | PTE_P,
 };
 gaddr_t pml4_ptr;
 
-uint64_t pdp[NR_PAGE_ENTRY] __page_aligned = {
+pe_t pdp = {
   /* straight mapping */
 #include "pdp.h"
 };
@@ -64,7 +69,8 @@ init_page()
   write_register(VMM_X64_CR3, pml4_ptr);
 }
 
-uint64_t gdt[3] __page_aligned = {
+TYPEDEF_PAGE_ALIGNED(uint64_t) gdt_t[3];
+gdt_t gdt = {
   [SEG_NULL] = 0,                  // NULL SEL
   [SEG_CODE] = 0x0020980000000000, // CODE SEL
   [SEG_DATA] = 0x0000900000000000, // DATA SEL

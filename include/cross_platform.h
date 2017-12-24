@@ -7,6 +7,7 @@
 
 #define ATTR_CHECK_FORMAT()
 #define noreturn [[noreturn]]
+#define TYPEDEF_PAGE_ALIGNED(t) typedef t __declspec(align(0x1000)) 
 
 #define PACK(declare) __pragma( pack(push, 1) ) declare __pragma( pack(pop) )
 
@@ -28,6 +29,8 @@
 #include <pthread.h>
 
 #define PACK(declare) declare __attribute__((__packed__))
+
+#define TYPEDEF_PAGE_ALIGNED(t) typedef t __attribute__ ((aligned(0x1000))) 
 
 #endif
 

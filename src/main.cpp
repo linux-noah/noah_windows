@@ -170,7 +170,8 @@ init_special_regs()
   write_register(VMM_X64_EFER, efer | EFER_LME | EFER_LMA);
 }
 
-struct gate_desc idt[256] __page_aligned;
+TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];
+gate_desc_t idt;
 gaddr_t idt_ptr;
 
 void

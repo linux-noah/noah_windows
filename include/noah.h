@@ -15,8 +15,6 @@
 #include "malloc.h"
 #include "version.h"
 
-#define __page_aligned __attribute__((aligned(0x1000)))
-
 /* privilege management */
 
 void drop_privilege(void);
