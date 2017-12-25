@@ -11,7 +11,9 @@
 #include "util/misc.h"
 #include "util/list.h"
 #include "util/khash.h"
+#include "linux/common.h"
 #include "linux/mman.h"
+#include "linux/ipc.h"
 #include "malloc.h"
 #include "version.h"
 
@@ -47,7 +49,7 @@ void main_loop(int return_on_sigret);
 
 /* signal */
 
-#include "linux/signal.h"
+// #include "linux/signal.h"
 
 /*
 typedef atomic_uint_least64_t atomic_sigbits_t;
@@ -65,9 +67,9 @@ struct task {
   gaddr_t set_child_tid, clear_child_tid;
   uint64_t tid;
   gaddr_t robust_list;
-  l_sigset_t sigmask;
+  //l_sigset_t sigmask;
   // atomic_sigbits_t sigpending;
-  l_stack_t sas;
+  //l_stack_t sas;
 };
 
 struct fdtable {
@@ -113,7 +115,7 @@ struct proc {
   struct mm *mm;
   struct {
     pthread_rwlock_t sig_lock;
-    l_sigaction_t sigaction[LINUX_NSIG];
+    // l_sigaction_t sigaction[LINUX_NSIG];
   };
   struct {
     pthread_mutex_t futex_mutex;
@@ -150,8 +152,8 @@ struct winsize;
 struct linux_winsize;
 struct rlimit; struct l_rlimit;
 
-int native_to_linux_mprot(int darwin_prot);
-int linux_to_native_mprot(int linux_prot);
+int native_to_linux_mprot(int);
+int linux_to_native_mprot(int);
 
 #if defined(__unix__) || defined(__APPLE__)
 int linux_to_native_o_flags(int l_flags);
