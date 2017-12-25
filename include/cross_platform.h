@@ -5,8 +5,8 @@
 
 #include <windows.h>
 
-#define ATTR_CHECK_FORMAT()
-#define noreturn [[noreturn]]
+#define ATTR_CHECK_FORMAT(...)
+#define noreturn __declspec(noreturn)
 #define TYPEDEF_PAGE_ALIGNED(t) typedef t __declspec(align(0x1000)) 
 
 #define PACK(declare) __pragma( pack(push, 1) ) declare __pragma( pack(pop) )

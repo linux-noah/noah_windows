@@ -1,12 +1,18 @@
+#if defined(__unix__) || defined(__APPLE__)
+#include <sys/mman.h>
+#include <unistd.h>
+#include <pthread.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <sys/mman.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <pthread.h>
+
+#include "cross_platform.h"
 #include "malloc.h"
+
 
 struct header {
   struct header *next;
@@ -39,11 +45,13 @@ init_shm_malloc(void)
 {
   /* this function is part of the "boot" sequence */
 
+  /* TODO
   arena_start = mmap(NULL, MEMORY_ARENA_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_HASSEMAPHORE | MAP_SHARED, -1, 0);
   if (arena_start == MAP_FAILED) {
     perror("init_malloc");
     exit(1);
   }
+  */
 
   pthread_rwlock_init(&lock, NULL);
   bzero(&base, sizeof base);

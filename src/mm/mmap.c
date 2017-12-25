@@ -12,12 +12,17 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
-
+#ifdef __APPLE__
 #include <Hypervisor/hv.h>
+#endif
+#endif
+
 
 void
 init_mmap(struct mm *mm)

@@ -30,8 +30,6 @@
 #ifndef	NOAH_UTIL_TREE_H
 #define	NOAH_UTIL_TREE_H
 
-#include <sys/cdefs.h>
-
 /*
  * This file defines data structures for different types of trees:
  * splay trees and red-black trees.
