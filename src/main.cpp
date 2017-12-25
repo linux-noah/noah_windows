@@ -16,6 +16,7 @@
 #endif
 
 extern "C" {
+#include "cross_platform.h"
 #include "common.h"
 #include "vm.h"
 #include "mm.h"
@@ -151,7 +152,7 @@ main_loop(int return_on_sigret)
     }
   }
 
-  __builtin_unreachable();
+  UNREACHABLE();
 }
 
 void
@@ -193,54 +194,15 @@ init_regs()
 void
 init_fpu()
 {
-  struct fxregs_state {
-    uint16_t cwd; /* Control Word                    */
-    uint16_t swd; /* Status Word                     */
-    uint16_t twd; /* Tag Word                        */
-    uint16_t fop; /* Last Instruction Opcode         */
-    union {
-      struct {
-        uint64_t rip; /* Instruction Pointer             */
-        uint64_t rdp; /* Data Pointer                    */
-      };
-      struct {
-        uint32_t fip; /* FPU IP Offset                   */
-        uint32_t fcs; /* FPU IP Selector                 */
-        uint32_t foo; /* FPU Operand Offset              */
-        uint32_t fos; /* FPU Operand Selector            */
-      };
-    };
-    uint32_t mxcsr;       /* MXCSR Register State */
-    uint32_t mxcsr_mask;  /* MXCSR Mask           */
-    uint32_t st_space[32]; /* 8*16 bytes for each FP-reg = 128 bytes */
-    uint32_t xmm_space[64]; /* 16*16 bytes for each XMM-reg = 256 bytes */
-    uint32_t __padding[12];
-    union {
-      uint32_t __padding1[12];
-      uint32_t sw_reserved[12];
-    };
-  } __attribute__((aligned(16))) fx;
-
-  /* emulate 'fninit'
-   * - http://www.felixcloutier.com/x86/FINIT:FNINIT.html
-   */
-  fx.cwd = 0x037f;
-  fx.swd = 0;
-  fx.twd = 0xffff;
-  fx.fop = 0;
-  fx.rip = 0;
-  fx.rdp = 0;
-
-  /* default configuration for the SIMD core */
-  fx.mxcsr = 0x1f80;
-  fx.mxcsr_mask = 0;
-
-  write_fpstate(&fx, sizeof fx);
+  // TODO
 }
 
 static void
 init_first_proc(const char *root)
 {
+#ifndef PTHREAD_RWLOCK_INITIALIZER
+#define PTHREAD_RWLOCK_INITIALIZER 0
+#endif
   proc = (struct proc) {
     .nr_tasks = 1,
     .lock = PTHREAD_RWLOCK_INITIALIZER,
@@ -250,6 +212,7 @@ init_first_proc(const char *root)
   list_add(&task.head, &proc.tasks);
   init_mm(proc.mm);
   // init_signal();
+  /*
   int rootfd = open(root, O_RDONLY | O_DIRECTORY);
   if (rootfd < 0) {
     perror("could not open initial root directory");
@@ -257,8 +220,9 @@ init_first_proc(const char *root)
   }
   // init_fileinfo(rootfd);
   close(rootfd);
+  */
   proc.pfutex = kh_init(pfutex);
-  pthread_mutex_init(&proc.futex_mutex, NULL);
+  //pthread_mutex_init(&proc.futex_mutex, NULL);
   proc.cred = (struct cred) {
     .lock = PTHREAD_RWLOCK_INITIALIZER,
     .uid = getuid(),
@@ -266,7 +230,7 @@ init_first_proc(const char *root)
     .suid = geteuid(),
   };
 
-  task.tid = getpid();
+  task.tid = 0; //TODO
 }
 
 static void
@@ -287,15 +251,20 @@ init_vkernel(const char *root)
 void
 drop_privilege(void)
 {
+#if defined(__unix__) || defined(__APPLE__)
   if (seteuid(getuid()) != 0) {
     panic("drop_privilege");
   }
+#endif
 }
 
+#if defined(__unix__) || defined(__APPLE__)
 int sys_setresuid(int, int, int);
+#endif
 void
 elevate_privilege(void)
 {
+#if defined(__unix__) || defined(__APPLE__)
   pthread_rwlock_wrlock(&proc.cred.lock);
   proc.cred.euid = 0;
   proc.cred.suid = 0;
@@ -303,6 +272,7 @@ elevate_privilege(void)
     panic("elevate_privilege");
   }
   pthread_rwlock_unlock(&proc.cred.lock);
+#endif
 }
 
 noreturn void
@@ -315,6 +285,7 @@ die_with_forcedsig(int sig)
 void
 check_platform_version(void)
 {
+#ifdef __APPLE__
   int32_t b;
   size_t len = sizeof b;
 
@@ -325,6 +296,7 @@ check_platform_version(void)
     fprintf(stderr, "Your cpu seems too old. Buy a new mac!\n");
     exit(1);
   }
+#endif
 }
 
 namespace po = boost::program_options;
