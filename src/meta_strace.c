@@ -3,10 +3,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <pthread.h>
 #include <stdlib.h>
 
 #if defined(__unix__) || defined(__APPLE__)
+#include <pthread.h>
 #include <unistd.h>
 #endif
 

@@ -1,14 +1,18 @@
 #include <assert.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <vmm.h>
+
+#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#ifdef __APPLE__
 #include <libgen.h>
 #include <sys/syslimits.h>
-#include <vmm.h>
+#endif
+#endif
 
 #include "vm.h"
 #include "mm.h"
