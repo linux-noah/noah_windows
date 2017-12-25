@@ -26,7 +26,6 @@ extern "C" {
 #include "x86/specialreg.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
-#include <getopt.h>
 }
 
 static bool
