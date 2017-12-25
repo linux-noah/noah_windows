@@ -66,22 +66,6 @@
 #include <sys/types.h>
 
 
-struct dir {
-  int fd;
-};
-
-struct path {
-  struct fs *fs;
-  struct dir *dir;
-  char subpath[LINUX_PATH_MAX];
-};
-
-struct file {
-  struct file_operations *ops;
-  int fd;
-};
-
-
 int
 resolve_path(const struct dir *parent, const char *name, int flags, struct path *path, int loop)
 {

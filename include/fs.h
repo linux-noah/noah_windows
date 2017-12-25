@@ -1,6 +1,12 @@
 #ifndef NOAH_FS_H
 #define NOAH_FS_H
 
+#include "types.h"
+#include "noah.h"
+#include "linux/common.h"
+#include "linux/fs.h"
+#include <sys/uio.h>
+
 #define LOOKUP_NOFOLLOW   0x0001
 #define LOOKUP_DIRECTORY  0x0002
 #define LOOKUP_CONTINUE   0x0004
@@ -9,6 +15,21 @@
 #define LOOKUP_REVAL      0x0020
 
 #define LOOP_MAX 20
+
+struct dir {
+  int fd;
+};
+
+struct path {
+  struct fs *fs;
+  struct dir *dir;
+  char subpath[LINUX_PATH_MAX];
+};
+
+struct file {
+  struct file_operations *ops;
+  int fd;
+};
 
 struct fs {
   struct fs_operations *ops;
