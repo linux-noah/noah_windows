@@ -44,14 +44,15 @@ void
 init_shm_malloc(void)
 {
   /* this function is part of the "boot" sequence */
+  // TODO
+  return;
+  UNREACHABLE();
 
-  /* TODO
   arena_start = mmap(NULL, MEMORY_ARENA_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_HASSEMAPHORE | MAP_SHARED, -1, 0);
   if (arena_start == MAP_FAILED) {
     perror("init_malloc");
     exit(1);
   }
-  */
 
   pthread_rwlock_init(&lock, NULL);
   bzero(&base, sizeof base);
