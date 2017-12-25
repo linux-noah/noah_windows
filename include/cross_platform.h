@@ -20,6 +20,9 @@
 
 #define _Thread_local
 
+noreturn static void _f_noreturn() {};
+#define UNREACHABLE() _f_noreturn()
+
 #else
 
 #define ATTR_CHECK_FORMAT(format_func, ...) __attribute__((format(format_func, __VA_ARGS__)))
@@ -31,6 +34,8 @@
 #define PACK(declare) declare __attribute__((__packed__))
 
 #define TYPEDEF_PAGE_ALIGNED(t) typedef t __attribute__ ((aligned(0x1000))) 
+
+#define UNREACHABLE() __builtin_unreachable()
 
 #endif
 
