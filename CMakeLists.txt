@@ -44,10 +44,11 @@ include_directories(
 target_link_libraries(noah hypervisor)
 
 set(Boost_USE_MULTITHREADED ON)
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  set(BOOST_ROOT "C:\\Program Files\\boost_1_66_0")
-  set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_66_0\\lib")
-endif()
+set(BOOST_ROOT "C:\\Program Files\\boost_1_65_0")
+set(BOOST_INCLUDEDIR "C:\\Program Files\\boost_1_65_0")
+set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_65_0\\lib64-msvc-14.1")
+set(Boost_DEBUG ON)
+link_directories(${Boost_LIBRARY_DIRS})
 find_package(Boost 1.65 COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
