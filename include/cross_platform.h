@@ -23,7 +23,27 @@
 noreturn static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
 
+
+// Temporary stubs for pthread
+
+#define pthread_rwlock_t void *
+#define pthread_cond_t void*
+#define pthread_mutex_t void *
+#define PTHREAD_RWLOCK_INITIALIZER NULL
+#define PTHREAD_MUTEX_INITIALIZER NULL
+
+#define pthread_rwlock_wrlock(...)
+#define pthread_rwlock_unlock(...)
+#define pthread_mutex_lock(...)
+#define pthread_mutex_unlock(...)
+#define pthread_threadid_np(...) -1
+#define pthread_rwlock_init(...)
+#define pthread_exit(...)
+
+
+
 #else
+
 
 #define ATTR_CHECK_FORMAT(format_func, ...) __attribute__((format(format_func, __VA_ARGS__)))
 
