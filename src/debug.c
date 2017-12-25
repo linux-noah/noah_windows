@@ -2,14 +2,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
-#include <pthread.h>
-#include <execinfo.h>
-#include <stdnoreturn.h>
 #include <errno.h>
 #include <string.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
+#include <pthread.h>
+#include <stdnoreturn.h>
+#include <execinfo.h>
 #endif
 
 #include "noah.h"
@@ -170,6 +170,7 @@ panic(const char *fmt, ...)
   free(given);
   free(mes);
 
+#ifdef __APPLE__
   struct rlimit lim;
   getrlimit(RLIMIT_CORE, &lim);
   if (lim.rlim_cur == 0) {
@@ -181,7 +182,9 @@ panic(const char *fmt, ...)
       setrlimit(RLIMIT_CORE, &lim);
     }
   }
+#endif
   
   fprintf(stderr, "%saborting..%s\n", magenda, reset);
-  die_with_forcedsig(LINUX_SIGABRT);
+  //die_with_forcedsig(LINUX_SIGABRT);
+  abort();
 }
