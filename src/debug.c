@@ -27,10 +27,8 @@ init_sink(const char *fn, FILE **sinkp, const char *name)
   if (! fn) {
     fn = "/dev/null";
   }
-  int fd = open(fn, O_RDWR | O_CREAT, 0644);
   // *sinkp = fdopen(vkern_dup_fd(fd, false), "w");
-  *sinkp = fdopen(fd, "w");
-  close(fd);
+  *sinkp = fopen(name, "w");
 
   char buf[1000];
   time_t now = time(0);
