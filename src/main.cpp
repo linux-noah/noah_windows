@@ -203,11 +203,10 @@ init_first_proc(const char *root)
 #ifndef PTHREAD_RWLOCK_INITIALIZER
 #define PTHREAD_RWLOCK_INITIALIZER 0
 #endif
-  proc = (struct proc) {
-    .nr_tasks = 1,
-    .lock = PTHREAD_RWLOCK_INITIALIZER,
-    .mm = (struct mm *)malloc(sizeof(struct mm)),
-  };
+  proc = { 0 };
+  proc.nr_tasks = 1;
+  proc.lock = PTHREAD_RWLOCK_INITIALIZER;
+  proc.mm = (struct mm *)malloc(sizeof(struct mm));
   INIT_LIST_HEAD(&proc.tasks);
   list_add(&task.head, &proc.tasks);
   init_mm(proc.mm);
@@ -223,12 +222,15 @@ init_first_proc(const char *root)
   */
   proc.pfutex = kh_init(pfutex);
   //pthread_mutex_init(&proc.futex_mutex, NULL);
-  proc.cred = (struct cred) {
+  proc.cred = { 0 };
+  /*
+  proc = {
     .lock = PTHREAD_RWLOCK_INITIALIZER,
     .uid = getuid(),
     .euid = geteuid(),
     .suid = geteuid(),
   };
+  */
 
   task.tid = 0; //TODO
 }

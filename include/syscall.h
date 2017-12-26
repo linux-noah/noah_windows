@@ -1,3 +1,6 @@
+#ifndef NOAH_SYSCALL_H
+#define NOAH_SYSCALL_H
+
 #include <stdint.h>
 
 #define SYSCALLS                          \
@@ -337,3 +340,5 @@ typedef uint64_t (*sc_handler_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_
 
 extern sc_handler_t sc_handler_table[NR_SYSCALLS];
 extern char *sc_name_table[NR_SYSCALLS];
+
+#endif
