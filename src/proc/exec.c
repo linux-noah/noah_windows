@@ -15,6 +15,9 @@
 #ifdef __APPLE__
 #include <sys/resource.h>
 #endif
+#elif defined(_WIN32)
+#include <malloc.h>
+#define alloca _alloca
 #endif
 
 #include "noah.h"
@@ -32,7 +35,7 @@
 void init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf64_Ehdr *ehdr, uint64_t global_offset, uint64_t interp_base);
 
 int
-load_elf_interp(const char *path, ulong load_addr)
+load_elf_interp(const char *path, uint64_t load_addr)
 {
   char *data;
   Elf64_Ehdr *h;
@@ -62,12 +65,12 @@ load_elf_interp(const char *path, ulong load_addr)
       continue;
     }
 
-    ulong p_vaddr = p[i].p_vaddr + load_addr;
+    uint64_t p_vaddr = p[i].p_vaddr + load_addr;
 
-    ulong mask = PAGE_SIZE(PAGE_4KB) - 1;
-    ulong vaddr = p_vaddr & ~mask;
-    ulong offset = p_vaddr & mask;
-    ulong size = roundup(p[i].p_memsz + offset, PAGE_SIZE(PAGE_4KB));
+    uint64_t mask = PAGE_SIZE(PAGE_4KB) - 1;
+    uint64_t vaddr = p_vaddr & ~mask;
+    uint64_t offset = p_vaddr & mask;
+    uint64_t size = roundup(p[i].p_memsz + offset, PAGE_SIZE(PAGE_4KB));
 
     int prot = 0;
     if (p[i].p_flags & PF_X) prot |= LINUX_PROT_EXEC;
@@ -113,7 +116,7 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
   uint64_t load_base = 0;
   bool load_base_set = false;
 
-  ulong global_offset = 0;
+  uint64_t global_offset = 0;
   if (ehdr->e_type == ET_DYN) {
     /* NB: Program headers in elf files of ET_DYN can have 0 as their own p_vaddr. */
     global_offset = 0x400000;   /* default base address */
@@ -124,12 +127,12 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
       continue;
     }
 
-    ulong p_vaddr = p[i].p_vaddr + global_offset;
+    uint64_t p_vaddr = p[i].p_vaddr + global_offset;
 
-    ulong mask = PAGE_SIZE(PAGE_4KB) - 1;
-    ulong vaddr = p_vaddr & ~mask;
-    ulong offset = p_vaddr & mask;
-    ulong size = roundup(p[i].p_memsz + offset, PAGE_SIZE(PAGE_4KB));
+    uint64_t mask = PAGE_SIZE(PAGE_4KB) - 1;
+    uint64_t vaddr = p_vaddr & ~mask;
+    uint64_t offset = p_vaddr & mask;
+    uint64_t size = roundup(p[i].p_memsz + offset, PAGE_SIZE(PAGE_4KB));
 
     int prot = 0;
     if (p[i].p_flags & PF_X) prot |= LINUX_PROT_EXEC;
@@ -159,7 +162,7 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
     }
   }
   if (interp) {
-    char interp_path[p[i].p_filesz + 1];
+    char *interp_path = alloca(p[i].p_filesz + 1);
     memcpy(interp_path, (char *)ehdr + p[i].p_offset, p[i].p_filesz);
     interp_path[p[i].p_filesz] = 0;
 
@@ -218,7 +221,7 @@ load_script(const char *script, size_t len, const char *elf_path, int argc, char
   }
 
   int newargc = sb_argc + argc;
-  char *newargv[newargc];
+  char **newargv = alloca(newargc);
   for (int i = 0; i < sb_argc; ++i) {
     newargv[i] = sb_argv[i];
   }
@@ -275,7 +278,7 @@ init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf
     total += strlen(*e) + 1;
   }
 
-  char buf[total];
+  char *buf = alloca(total);
 
   uint64_t off = 0;
 
