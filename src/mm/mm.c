@@ -60,7 +60,7 @@ init_pdp()
 {
   // Straight mapping
   for (int i = 0; i < NR_PAGE_ENTRY - 1; i++) {
-    pdp[i] = (0x40000000 * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
+    pdp[i] = (0x40000000ULL * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
   }
   pdp[NR_PAGE_ENTRY - 1] = PTE_PS | PTE_W | PTE_P; /* we may initialize this entry with 0 */
 }
