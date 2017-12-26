@@ -13,6 +13,7 @@
 #endif
 
 #include "noah.h"
+#include "cross_platform.h"
 #include "vm.h"
 #include "linux/time.h"
 #include "linux/fs.h"
@@ -20,6 +21,29 @@
 static FILE *printk_sink, *warnk_sink;
 pthread_mutex_t printk_sync = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t warnk_sync = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef _WIN32
+static int
+vasprintf(char **out, const char *fmt, va_list ap)
+{
+  int len = _vscprintf(fmt, ap);
+  *out = (char *)malloc(len);
+  if (out == NULL) {
+    return -1;
+  }
+  return vsprintf_s(*out, len, fmt, ap);
+}
+
+static int
+asprintf(char **out, const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, out);
+  int ret = vasprintf(out, fmt, ap);
+  va_end(ap);
+  return ret;
+}
+#endif
 
 void
 init_sink(const char *fn, FILE **sinkp, const char *name)
@@ -114,6 +138,7 @@ warnk(const char *fmt, ...)
 static void
 printbt_to_sink(FILE *sink, pthread_mutex_t *sync)
 {
+#ifdef __APPLE__
   if (!sink) {
     return;
   }
@@ -122,7 +147,7 @@ printbt_to_sink(FILE *sink, pthread_mutex_t *sync)
   size_t size;
   char **strings;
   size_t i;
-  uint64_t tid;
+  uint64_t tid = 0;
 
   pthread_threadid_np(NULL, &tid);
   size = backtrace(array, 10);
@@ -140,6 +165,7 @@ printbt_to_sink(FILE *sink, pthread_mutex_t *sync)
   }
 
   free(strings);
+#endif
 }
 
 noreturn void

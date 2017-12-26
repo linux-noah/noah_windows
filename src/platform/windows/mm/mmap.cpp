@@ -19,13 +19,19 @@ platform_alloc_mem(void **ret, size_t size, int prot)
 }
 
 int
+platform_alloc_shared_mem(void **ret, size_t size, int prot)
+{
+  return -LINUX_EINVAL;
+}
+
+int
 platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
 {
-  return -LINUX_ENFILE;
+  return -LINUX_EINVAL;
 }
 
 int
 platform_unmap_mem(void *mem, size_t size)
 {
-  return -LINUX_ENFILE;
+  return -LINUX_EINVAL;
 }
