@@ -25,7 +25,7 @@ platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_ba
 }
 
 int
-platform_unmap_mem(void *mem, ssize_t size)
+platform_unmap_mem(void *mem, size_t size)
 {
   return -LINUX_ENFILE;
 }

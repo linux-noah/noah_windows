@@ -38,8 +38,8 @@ load_elf_interp(const char *path, ulong load_addr)
   Elf64_Ehdr *h;
   uint64_t map_top = 0;
 
-  int err = platform_alloc_filemapped_mem((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
-  if (err < 0) {
+  int size = platform_alloc_filemapped_mem((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
+  if (size < 0) {
     fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
     abort();
   }
@@ -85,7 +85,7 @@ load_elf_interp(const char *path, ulong load_addr)
   write_register(VMM_X64_RIP, load_addr + h->e_entry);
   proc.mm->start_brk = map_top;
 
-  munmap(data, st.st_size);
+  platform_unmap_mem(data, size);
 
   return 0;
 }

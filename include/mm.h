@@ -62,6 +62,6 @@ int do_munmap(gaddr_t gaddr, size_t size);
 
 int platform_unmap_mem(void *mem, size_t size);
 int platform_alloc_mem(void **ret, size_t size, int prot);
-int platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
+int platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path);
 
 #endif

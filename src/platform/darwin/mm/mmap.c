@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
-#incldue <stdbool.h>
+#include <stdbool.h>
 
 #include "linux/errno.h"
 #include "linux/mman.h"
@@ -48,7 +48,7 @@ platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_ba
 }
 
 int
-platform_unmap_mem(void *mem, ssize_t size)
+platform_unmap_mem(void *mem, size_t size)
 {
   int ret = munmap(mem, size);
   if (ret < 0) {
