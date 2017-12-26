@@ -6,11 +6,16 @@
 #include <assert.h>
 #include <ctype.h>
 
-#include <unistd.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#include <sys/mman.h>
+#ifdef __APPLE__
 #include <sys/resource.h>
+#endif
+#endif
 
 #include "noah.h"
 #include "vm.h"
