@@ -24,7 +24,6 @@ add_executable(noah
   src/mm/mm.c
   src/mm/mmap.c
   src/mm/malloc.c
-  src/fs/fs.c
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC

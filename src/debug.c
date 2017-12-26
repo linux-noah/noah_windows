@@ -46,7 +46,7 @@ print_to_sink(FILE *sink, pthread_mutex_t *sync, const char *mes)
     return;
   }
 
-  uint64_t tid;
+  uint64_t tid = 0;
   pthread_threadid_np(NULL, &tid);
 
   if (sync) {

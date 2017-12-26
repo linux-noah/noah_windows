@@ -39,9 +39,9 @@ ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 /* linux emulation */
 
 int do_exec(const char *elf_path, int argc, char *argv[], char **envp);
-int vkern_open(const char *path, int flags, int mode);
-int vkern_openat(int fd, const char *path, int flags, int mode);
-int vkern_close(int fd);
+//int vkern_open(const char *path, int flags, int mode);
+//int vkern_openat(int fd, const char *path, int flags, int mode);
+//int vkern_close(int fd);
 gaddr_t alloc_region(size_t len);
 
 noreturn void die_with_forcedsig(int sig);
