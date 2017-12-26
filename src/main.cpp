@@ -235,7 +235,6 @@ static void
 init_vkernel(const char *root)
 {
   init_mm(&vkern_mm);
-  init_shm_malloc();
   init_page();
   init_special_regs();
   init_segment();

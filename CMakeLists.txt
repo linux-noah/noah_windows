@@ -23,7 +23,6 @@ add_executable(noah
   src/proc/process.c
   src/mm/mm.c
   src/mm/mmap.c
-  src/mm/malloc.c
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC

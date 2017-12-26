@@ -42,7 +42,6 @@ extern struct mm vkern_mm;
 void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
-void init_shm_malloc();
 
 gaddr_t kmap(void *ptr, size_t size, int flags);
 
