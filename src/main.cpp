@@ -200,12 +200,9 @@ init_fpu()
 static void
 init_first_proc(const char *root)
 {
-#ifndef PTHREAD_RWLOCK_INITIALIZER
-#define PTHREAD_RWLOCK_INITIALIZER 0
-#endif
-  proc = { 0 };
+  memset(&proc, 0, sizeof(proc));
   proc.nr_tasks = 1;
-  proc.lock = PTHREAD_RWLOCK_INITIALIZER;
+  pthread_rwlock_init(&proc.lock, NULL);
   proc.mm = (struct mm *)malloc(sizeof(struct mm));
   INIT_LIST_HEAD(&proc.tasks);
   list_add(&task.head, &proc.tasks);
@@ -222,7 +219,6 @@ init_first_proc(const char *root)
   */
   proc.pfutex = kh_init(pfutex);
   //pthread_mutex_init(&proc.futex_mutex, NULL);
-  proc.cred = { 0 };
   /*
   proc = {
     .lock = PTHREAD_RWLOCK_INITIALIZER,
