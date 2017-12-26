@@ -32,7 +32,7 @@ const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 gaddr_t
 kmap(void *ptr, size_t size, int flags)
 {
-  static uint64_t noah_kern_brk = user_addr_max;
+  static uint64_t noah_kern_brk = 0x0000007fc0000000ULL; // user_addr_max, hard coding for a workaroud of MSVC's complaining
 
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
@@ -53,15 +53,23 @@ pe_t pml4 = {
   [0] = PTE_U | PTE_W | PTE_P,
 };
 gaddr_t pml4_ptr;
+pe_t pdp;
 
-pe_t pdp = {
-  /* straight mapping */
-#include "pdp.h"
-};
+void
+init_pdp()
+{
+  // Straight mapping
+  for (int i = 0; i < NR_PAGE_ENTRY - 1; i++) {
+    pdp[i] = (0x40000000 * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
+  }
+  pdp[NR_PAGE_ENTRY - 1] = PTE_PS | PTE_W | PTE_P; /* we may initialize this entry with 0 */
+}
 
 void
 init_page()
 {
+  init_pdp();
+
   pml4_ptr = kmap(pml4, 0x1000, PROT_READ | PROT_WRITE);
   pml4[0] |= kmap(pdp, 0x1000, PROT_READ | PROT_WRITE) & 0x000ffffffffff000ul;
 
@@ -144,7 +152,7 @@ init_segment()
 void
 init_mm(struct mm *mm)
 {
-  bzero(mm, sizeof(struct mm));
+  memset(mm, 0, sizeof(struct mm));
   init_mmap(mm);
 
   INIT_LIST_HEAD(&mm->mm_regions);
@@ -162,7 +170,7 @@ guest_to_host(gaddr_t gaddr)
   if (!region) {
     return NULL;
   }
-  return region->haddr + gaddr - region->gaddr;
+  return (char *)region->haddr + gaddr - region->gaddr;
 }
 
 
@@ -208,8 +216,8 @@ split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
   assert(is_page_aligned((void*)gaddr, PAGE_4KB));
 
   struct mm_region *tail = malloc(sizeof(struct mm_region));
-  int offset = gaddr - region->gaddr;
-  tail->haddr = region->haddr + offset;
+  gaddr_t offset = gaddr - region->gaddr;
+  tail->haddr = (char *)region->haddr + offset;
   tail->gaddr = gaddr;
   tail->size = region->size - offset;
   tail->prot = region->prot;

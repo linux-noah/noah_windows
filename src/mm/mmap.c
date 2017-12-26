@@ -74,16 +74,6 @@ do_munmap(gaddr_t gaddr, size_t size)
   return 0;
 }
 
-static int
-linux_to_native_mflags(int l_flags)
-{
-  int d_flags = 0;
-  if (l_flags & LINUX_MAP_SHARED) d_flags |= MAP_SHARED;
-  if (l_flags & LINUX_MAP_PRIVATE) d_flags |= MAP_PRIVATE;
-  if (l_flags & LINUX_MAP_ANON) d_flags |= MAP_ANON;
-  return d_flags;
-}
-
 gaddr_t
 do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, off_t offset)
 {
