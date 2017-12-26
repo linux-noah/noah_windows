@@ -14,7 +14,6 @@
 #include "linux/common.h"
 #include "linux/mman.h"
 #include "linux/ipc.h"
-#include "malloc.h"
 #include "version.h"
 
 /* privilege management */
