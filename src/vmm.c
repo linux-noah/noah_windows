@@ -88,8 +88,9 @@ destroy_vm()
 {
   vmm_return_t ret;
 
-  struct vcpu *vcpu;
-  list_for_each_entry (vcpu, &vcpus, list) {
+  struct list_head *p;
+  list_for_each(p, &vcpus) {
+    struct vcpu *vcpu = (struct vcpu *)p;
     ret = vmm_cpu_destroy(vm, vcpu->vcpuid);
     if (ret != VMM_SUCCESS) {
       panic("could not destroy the vcpu: error code %x", ret);
