@@ -34,9 +34,10 @@
 
 #define DEFINE_SCWRAPPER(name, ...)                                                \
   uint64_t _sys_##name(_EXPAND_VA_ARGS(_MAP(MK_TEMP,__VA_ARGS__))) {                                 \
-    meta_strace_pre(LSYS_##name, #name, _EXPAND_VA_ARGS(_MAP(MK_STRACE_CALL, ##__VA_ARGS__, 0, 0)));     \
+    /* TODO: Replace "##" with some non-GNU trick */ \
+    /* meta_strace_pre(LSYS_##name, #name, _EXPAND_VA_ARGS(_MAP(MK_STRACE_CALL, ##__VA_ARGS__, 0, 0))); */    \
     uint64_t ret = sys_##name(_EXPAND_VA_ARGS(_MAP(MK_CAST,__VA_ARGS__)));                         \
-    meta_strace_post(LSYS_##name, #name, ret, _EXPAND_VA_ARGS(_MAP(MK_STRACE_CALL, ##__VA_ARGS__, 0, 0)));                                       \
+    /* meta_strace_post(LSYS_##name, #name, ret, _EXPAND_VA_ARGS(_MAP(MK_STRACE_CALL, ##__VA_ARGS__, 0, 0))); */\
     return ret;                                                                    \
   }
 
