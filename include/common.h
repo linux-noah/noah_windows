@@ -18,9 +18,16 @@
 #define _MAP7(f,t,v,...) f(t,v), _EXPAND_VA_ARGS(_MAP6(f,__VA_ARGS__))
 #define _DISPATCH(T0,V0,T1,V1,T2,V2,T3,V3,T4,V4,T5,V5,T6,V6,X,...) X
 
+
+// system call declartion macros
 #define MK_DECL(t,v) t v
 #define MK_TEMP(t,v) uint64_t temp__##v
 #define MK_CAST(t,v) (t) temp__##v
+
+// strace related macros
+#define MK_STRACE_CALL(t,v) #t, #v, temp__##v
+#define temp__0             0  // argument terminator
+
 
 #define DECLARE_SCFUNCT(name, ...)                      \
   uint64_t sys_##name(_EXPAND_VA_ARGS(_MAP(MK_DECL, __VA_ARGS__)));
@@ -40,14 +47,6 @@
   _EXPAND_VA_ARGS(DECLARE_SCFUNCT(name, ##__VA_ARGS__))          \
   _EXPAND_VA_ARGS(DEFINE_SCWRAPPER(name, ##__VA_ARGS__))         \
   _EXPAND_VA_ARGS(DEFINE_SCFUNCT(name, ##__VA_ARGS__))
-
-
-/*
- * strace related macros
- */
-
-#define MK_STRACE_CALL(t,v) #t, #v, temp__##v
-#define temp__0             0  // argument terminator
 
 
 /*

@@ -37,24 +37,12 @@ load_elf_interp(const char *path, ulong load_addr)
   char *data;
   Elf64_Ehdr *h;
   uint64_t map_top = 0;
-  int fd;
-  struct stat st;
 
-  // if ((fd = vkern_open(path, LINUX_O_RDONLY, 0)) < 0) {
-  //   fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
-  //   return -1;
-  // }
-  if ((fd = open(path, O_RDONLY, 0)) < 0) {
+  int err = platform_alloc_filemapped_mem((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
+  if (err < 0) {
     fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
-    return -1;
+    abort();
   }
-
-  fstat(fd, &st);
-
-  data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
-
-  // vkern_close(fd);
-  close(fd);
 
   h = (Elf64_Ehdr *)data;
 
@@ -395,8 +383,6 @@ int
 do_exec(const char *elf_path, int argc, char *argv[], char **envp)
 {
   int err;
-  int fd;
-  struct stat st;
   char *data;
   
   // if ((err = do_access(elf_path, X_OK)) < 0) {
@@ -405,35 +391,29 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   // if ((fd = vkern_open(elf_path, LINUX_O_RDONLY, 0)) < 0) {
   //  return fd;
   // }
-  if ((fd = open(elf_path, O_RDONLY, 0)) < 0) {
-   return fd;
-  }
   if (proc.nr_tasks > 1) {
     warnk("Multi-thread execve is not implemented yet\n");
     return -LINUX_EINVAL;
   }
 
+  int size = platform_alloc_filemapped_mem(&data, -1, PROT_READ | PROT_EXEC, false, 0, elf_path);
+  if (size < 0) {
+    return size;
+  }
+
   prepare_newproc();
-
-  /* Now do exec */
-  fstat(fd, &st);
-
-  data = mmap(0, st.st_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
-
-  // vkern_close(fd);
-  close(fd);
 
   drop_privilege();
 
-  if (4 <= st.st_size && memcmp(data, ELFMAG, 4) == 0) {
+  if (4 <= size && memcmp(data, ELFMAG, 4) == 0) {
     if ((err = load_elf((Elf64_Ehdr *) data, argc, argv, envp)) < 0)
       return err;
-    if (st.st_mode & 04000) {
+    /*if (st.st_mode & 04000) {
       elevate_privilege();
-    }
+    }*/
   }
-  else if (2 <= st.st_size && data[0] == '#' && data[1] == '!') {
-    if ((err = load_script(data, st.st_size, elf_path, argc, argv, envp)) < 0)
+  else if (2 <= size && data[0] == '#' && data[1] == '!') {
+    if ((err = load_script(data, size, elf_path, argc, argv, envp)) < 0)
       return err;
   }
   /*else if (4 <= st.st_size && memcmp(data, "\xcf\xfa\xed\xfe", 4) == 0) {
@@ -444,7 +424,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
     return -LINUX_ENOEXEC;                  /* unsupported file type */
   }
 
-  munmap(data, st.st_size);
+  platform_unmap_mem(data, size);
   proc.mm->current_brk = proc.mm->start_brk;
 
   return 0;

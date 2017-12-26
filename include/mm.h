@@ -59,4 +59,9 @@ bool is_region_private(struct mm_region*);
 gaddr_t do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, off_t offset);
 int do_munmap(gaddr_t gaddr, size_t size);
 
+
+int platform_unmap_mem(void *mem, size_t size);
+int platform_alloc_mem(void **ret, size_t size, int prot);
+int platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
+
 #endif

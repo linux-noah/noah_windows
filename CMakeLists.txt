@@ -29,11 +29,13 @@ add_executable(noah
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC
   src/conv_windows.cpp 
+  src/platform/windows/mm/mmap.cpp
 )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(noah PUBLIC
   src/conv_darwin.c 
   src/fs/darwinfs.c
+  src/platform/darwin/mm/mmap.c
 )
 endif()
 
