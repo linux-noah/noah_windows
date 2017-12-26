@@ -22,6 +22,16 @@ platform_alloc_mem(void **ret, size_t size, int prot)
 }
 
 int
+platform_alloc_shared_mem(void **ret, size_t size, int prot)
+{
+  *ret = mmap(0, size, prot, MAP_SHARED, -1, 0);
+  if (*ret == MAP_FAILED) {
+    return -native_to_linux_errno(errno);
+  }
+  return size;
+}
+
+int
 platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
 {
   // TODO: manage temporary FDs via vkern_open/close

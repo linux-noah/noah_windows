@@ -64,7 +64,7 @@ do_munmap(gaddr_t gaddr, size_t size)
     list_del(&overlapping->list);
     RB_REMOVE(mm_region_tree, &proc.mm->mm_region_tree, overlapping);
     vm_munmap(overlapping->gaddr, overlapping->size);
-    munmap(overlapping->haddr, overlapping->size);
+    platform_unmap_mem(overlapping->haddr, overlapping->size);
     free(overlapping);
     if (next == &proc.mm->mm_regions)
       break;
@@ -85,9 +85,12 @@ linux_to_native_mflags(int l_flags)
 }
 
 gaddr_t
-do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, off_t offset)
+do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, off_t offset)
 {
   assert((addr & 0xfff) == 0);
+  if (!(l_flags & LINUX_MAP_PRIVATE) && !(l_flags & LINUX_MAP_ANON)) {
+    return -LINUX_EINVAL;
+  }
 
   /* some l_flags are obsolete and just ignored */
   l_flags &= ~LINUX_MAP_DENYWRITE;
@@ -113,8 +116,19 @@ do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, o
     addr = alloc_region(len);
   }
 
-  void *ptr = mmap(0, len, d_prot, linux_to_native_mflags(l_flags), fd, offset);
-  if (ptr == MAP_FAILED) {
+  void *ptr;
+  int err;
+  if (!(l_flags & LINUX_MAP_ANON)) {
+    // TODO
+    return -LINUX_EINVAL;
+  } else {
+    if (l_flags & LINUX_MAP_PRIVATE) {
+      err = platform_alloc_mem(&ptr, len, n_prot);
+    } else {
+      err = platform_alloc_shared_mem(&ptr, len, n_prot);
+    }
+  }
+  if (err < 0) {
     panic("mmap failed. addr :0x%llx, len: 0x%lux, prot: %d, l_flags: %d, fd: %d, offset: 0x%llx\n", addr, len, l_prot, l_flags, fd, offset);
   }
 

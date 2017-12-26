@@ -263,7 +263,7 @@ destroy_mm(struct mm *mm)
   struct list_head *list, *t;
   list_for_each_safe (list, t, &mm->mm_regions) {
     struct mm_region *r = list_entry(list, struct mm_region, list);
-    munmap(r->haddr, r->size);
+    platform_unmap_mem(r->haddr, r->size);
     vm_munmap(r->gaddr, r->size);
     free(r);
   }
