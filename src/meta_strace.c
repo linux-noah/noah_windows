@@ -11,6 +11,7 @@
 #endif
 
 #include "common.h"
+#include "cross_platform.h"
 #include "syscall.h"
 #include "noah.h"
 
@@ -82,7 +83,7 @@ print_ret(int syscall_num, int argc, char *argnames[6], char *typenames[6], uint
 {
   fprintf(strace_sink, "): ret = 0x%llx", ret);
   if ((int64_t)ret < 0) {
-    fprintf(strace_sink, "[%s]", linux_errno_str(-ret));
+    fprintf(strace_sink, "[%s]", linux_errno_str(-(int64_t)ret));
   }
   fprintf(strace_sink, "\n");
 }
@@ -125,7 +126,7 @@ meta_strace_info(const char *fmt, ...)
   va_start(ap, fmt);
   char *mes;
 
-  vasprintf(&mes, fmt, ap);
+  // TODO: vasprintf(&mes, fmt, ap);
 
   fprintf(strace_sink, "INFO: %s", mes);
 
@@ -149,7 +150,7 @@ meta_strace_pre(int syscall_num, char *syscall_name, ...)
     return;
   }
 
-  uint64_t tid;
+  uint64_t tid = 0;
   pthread_threadid_np(NULL, &tid);
 
   pthread_mutex_lock(&strace_sync);

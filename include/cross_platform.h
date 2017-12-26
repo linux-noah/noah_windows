@@ -23,6 +23,7 @@
 noreturn static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
 
+static int getpid() { return 0; }
 
 // Temporary stubs for pthread
 
