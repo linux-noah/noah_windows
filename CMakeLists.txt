@@ -13,6 +13,20 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fsanitize=address -fno-o
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 endif()
 
+set(Boost_USE_MULTITHREADED ON)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+set(BOOST_ROOT "C:\\Program Files\\boost_1_65_0")
+set(BOOST_INCLUDEDIR "C:\\Program Files\\boost_1_65_0")
+set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_65_0\\lib64-msvc-14.1")
+set(Boost_DEBUG ON)
+add_definitions( -DBOOST_ALL_NO_LIB )
+add_definitions( -DBOOST_ALL_DYN_LINK )
+endif()
+find_package(Boost 1.65 COMPONENTS program_options REQUIRED)
+link_directories(${BOOST_LIBRARYDIR})
+include_directories(${BOOST_INCLUDEDIR})
+
+
 add_executable(noah
   src/main.cpp
   src/vmm.c
@@ -37,6 +51,9 @@ target_sources(noah PUBLIC
 )
 endif()
 
+target_link_libraries(noah ${Boost_LIBRARIES})
+
+
 add_subdirectory(lib/libhypervisor)
 include_directories(
   include
@@ -45,17 +62,6 @@ include_directories(
 )
 
 target_link_libraries(noah hypervisor)
-
-set(Boost_USE_MULTITHREADED ON)
-set(BOOST_ROOT "C:\\Program Files\\boost_1_65_0")
-set(BOOST_INCLUDEDIR "C:\\Program Files\\boost_1_65_0")
-set(BOOST_LIBRARYDIR "C:\\Program Files\\boost_1_65_0\\lib64-msvc-14.1")
-set(Boost_DEBUG ON)
-link_directories(${Boost_LIBRARY_DIRS})
-find_package(Boost 1.65 COMPONENTS program_options REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
-
-target_link_libraries(noah ${Boost_LIBRARIES})
 
 install(PROGRAMS bin/noah DESTINATION bin)
 install(TARGETS noah DESTINATION libexec)
