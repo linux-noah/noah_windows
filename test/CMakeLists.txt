@@ -1,8 +1,8 @@
 
 if(NOT DEFINED TEST_ARCH)
-    set(TEST_ARCH Windows)
+  set(TEST_ARCH Windows)
 endif(NOT DEFINED TEST_ARCH)
 
 add_test(NAME all
-    COMMAND ${PROJECT_SOURCE_DIR}/test/test.rb $<TARGET_FILE:noah> --arch=${TEST_ARCH}
+  COMMAND ruby ${PROJECT_SOURCE_DIR}/test/test.rb $<TARGET_FILE:noah> --arch=${TEST_ARCH}
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
