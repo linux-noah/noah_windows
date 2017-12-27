@@ -4,6 +4,7 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <Windows.h>
 
 #define ATTR_CHECK_FORMAT(...)
 #define noreturn __declspec(noreturn)
@@ -22,8 +23,6 @@
 
 noreturn static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
-
-static int getpid() { return 0; }
 
 // Temporary stubs for pthread
 

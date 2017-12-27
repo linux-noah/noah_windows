@@ -62,6 +62,10 @@ include_directories(
 )
 
 target_link_libraries(noah hypervisor)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+add_custom_command(TARGET noah POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hypervisor> $<TARGET_FILE_DIR:noah>)
+endif()
 
 install(PROGRAMS bin/noah DESTINATION bin)
 install(TARGETS noah DESTINATION libexec)
