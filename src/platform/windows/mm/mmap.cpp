@@ -13,9 +13,23 @@ extern "C" {
 namespace bi = boost::interprocess;
 
 int
-platform_alloc_mem(void **ret, size_t size, int prot)
+generic_to_page_prot(int prot, bool cow)
 {
-  *ret = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, prot);
+  if (prot & PROT_WRITE) {
+    if (cow) {
+      return PAGE_WRITECOPY;
+    } else {
+      return PAGE_READWRITE;
+    }
+  } else {
+    return PAGE_READONLY;
+  }
+}
+
+int
+platform_map_mem(void **ret, size_t size, int prot)
+{
+  *ret = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, generic_to_page_prot(prot, false));
   if (*ret == NULL) {
     return -native_to_linux_errno(_doserrno);
   }
@@ -23,41 +37,72 @@ platform_alloc_mem(void **ret, size_t size, int prot)
 }
 
 int
-platform_alloc_shared_mem(void **ret, size_t size, int prot)
+platform_map_shared_mem(void **ret, size_t size, int prot)
 {
   return -LINUX_EINVAL;
 }
 
 int
-platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
+platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
 {
-  bi::mode_t mode = bi::read_only;
-  if (prot == PROT_READ) mode = bi::read_only;
-  if (prot & PROT_WRITE) {
-    if (writes_back) {
-      mode = bi::read_write;
-    } else {
-      mode = bi::copy_on_write;
-    }
+  if (size == 0) {
+    return -LINUX_EINVAL;
+  }
+  if (!(prot & PROT_READ)) {
+    return -LINUX_EINVAL;
   }
 
-  try {
-    bi::file_mapping mapping(path, mode);
-    bi::mapped_region region;
-    if (size == -1) {
-      region = bi::mapped_region(mapping, mode, offset);
-      size = region.get_size();
-    } else {
-      region = bi::mapped_region(mapping, mode, offset);
-    }
-    *ret = region.get_address();
-  } catch (const bi::interprocess_exception &e) {
-    // TODO: neat error conversion
-    return -LINUX_ENOENT;
-  } catch (...) {
-    return -LINUX_ENOENT;
+  int err;
+  HANDLE f = CreateFile(path, prot, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    NULL, OPEN_EXISTING, FILE_FLAG_POSIX_SEMANTICS, NULL);
+  if (f == INVALID_HANDLE_VALUE) {
+    err = -native_to_linux_errno(_doserrno);
+    goto out_close_file;
   }
-  return size;
+
+  int w_acc;
+  if (prot & PROT_WRITE) {
+    if (writes_back) {
+      w_acc = FILE_MAP_ALL_ACCESS;
+    } else {
+      w_acc = FILE_MAP_COPY;
+    }
+  } else {
+    w_acc = FILE_MAP_READ;
+  }
+  int w_prot = generic_to_page_prot(prot, !writes_back);
+  if (prot & PROT_EXEC) {
+    w_prot <<= 4;
+  }
+  DWORD size_high, size_low;
+  if (size == -1) { // Treat as equivalent to the file size
+    size_low = GetFileSize(f, &size_high);
+    if (size_low == INVALID_FILE_SIZE) {
+      err = -native_to_linux_errno(_doserrno);
+      goto out_close_file;
+    }
+    size = (size_high << 32) | size_low;
+  }
+  HANDLE m = CreateFileMapping(f, NULL, w_prot, size_high, size_low, NULL);
+  if (m == INVALID_HANDLE_VALUE) {
+    goto out_close_mapping;
+  }
+
+  assert(size_high == 0); // TODO
+  *ret = MapViewOfFile(m, w_acc, 0, offset, size_low);
+  if (*ret == NULL) {
+    err = -native_to_linux_errno(_doserrno);
+    goto out_close_mapping;
+  }
+
+  err = size; // Success
+
+out_close_mapping:
+  CloseHandle(m);
+out_close_file:
+  CloseHandle(f);
+
+  return err;
 }
 
 int
@@ -67,5 +112,12 @@ platform_unmap_mem(void *mem, size_t size)
   if (!VirtualFree(mem, size, MEM_DECOMMIT)) {
     return -native_to_linux_errno(_doserrno);
   }
+  return 0;
+}
+
+int
+platform_free_filemapping(void *mem, size_t size)
+{
+  // TODO:
   return 0;
 }

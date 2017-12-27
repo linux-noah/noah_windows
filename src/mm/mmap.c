@@ -113,9 +113,9 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
     return -LINUX_EINVAL;
   } else {
     if (l_flags & LINUX_MAP_PRIVATE) {
-      err = platform_alloc_mem(&ptr, len, n_prot);
+      err = platform_map_mem(&ptr, len, n_prot);
     } else {
-      err = platform_alloc_shared_mem(&ptr, len, n_prot);
+      err = platform_map_shared_mem(&ptr, len, n_prot);
     }
   }
   if (err < 0) {

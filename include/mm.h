@@ -60,8 +60,9 @@ int do_munmap(gaddr_t gaddr, size_t size);
 
 
 int platform_unmap_mem(void *mem, size_t size);
-int platform_alloc_mem(void **ret, size_t size, int prot);
-int platform_alloc_shared_mem(void **ret, size_t size, int prot);
-int platform_alloc_filemapped_mem(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path);
+int platform_map_mem(void **ret, size_t size, int prot);
+int platform_map_shared_mem(void **ret, size_t size, int prot);
+int platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path);
+int platform_free_filemapping(void *addr, size_t size);
 
 #endif

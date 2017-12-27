@@ -1,6 +1,8 @@
 #ifndef NOAH_CROSS_PLATFORM_H
 #define NOAH_CROSS_PLATFORM_H
 
+#include <stdint.h>
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -17,7 +19,7 @@
 #define PROT_WRITE GENERIC_WRITE
 #define PROT_EXEC  GENERIC_EXECUTE
 
-#define ssize_t int
+#define ssize_t int64_t
 
 #define _Thread_local
 

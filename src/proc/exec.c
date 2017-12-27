@@ -41,7 +41,7 @@ load_elf_interp(const char *path, uint64_t load_addr)
   Elf64_Ehdr *h;
   uint64_t map_top = 0;
 
-  int size = platform_alloc_filemapped_mem((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
+  int size = platform_alloc_filemapping((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
   if (size < 0) {
     fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
     abort();
@@ -399,7 +399,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
     return -LINUX_EINVAL;
   }
 
-  int size = platform_alloc_filemapped_mem(&data, -1, PROT_READ | PROT_EXEC, false, 0, elf_path);
+  int size = platform_alloc_filemapping(&data, -1, PROT_READ | PROT_EXEC, false, 0, elf_path);
   if (size < 0) {
     return size;
   }
@@ -427,7 +427,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
     return -LINUX_ENOEXEC;                  /* unsupported file type */
   }
 
-  platform_unmap_mem(data, size);
+  platform_free_filemapping(data, size);
   proc.mm->current_brk = proc.mm->start_brk;
 
   return 0;
