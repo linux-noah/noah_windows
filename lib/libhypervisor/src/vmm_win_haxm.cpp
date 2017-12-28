@@ -451,6 +451,7 @@ vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t value)
 static inline int
 to_vmm_exit_reason(uint32_t hax_exit_status)
 {
+  // VMEntry failure will be reported as VMM_EXIT_SHUTDOWN in HAXM
   switch (hax_exit_status) {
   case HAX_EXIT_HLT: return VMM_EXIT_HLT;
   case HAX_EXIT_IO: return VMM_EXIT_IO;
@@ -470,7 +471,7 @@ vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value)
     *value = to_vmm_exit_reason(cpu->tunnel->exit_status);
     break;
   case VMM_CTRL_NATIVE_EXIT_REASON:
-    *value = to_vmm_exit_reason(cpu->tunnel->exit_reason);
+    *value = cpu->tunnel->exit_reason;
     break;
   default:
     fprintf(stderr, "Unsupported vcpu state id: %d\n", id);
