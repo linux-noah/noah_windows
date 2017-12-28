@@ -336,7 +336,13 @@ int vmm_cpu_set_register(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_t reg, uint64_t
 }
 
 int vmm_cpu_get_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t *value) {
-  return tr_ret(hv_vcpu_read_msr(vmm_vcpuid, msr, value));
+  if (msr == MSR_IA32_EFER) {
+    // EFER seems to need some special handling, 
+    // let users touch the VMCS's value instead of MSR instead
+    return vmm_cpu_get_register(vm, cpu, VMM_X64_EFER, value);
+  } else {
+    return tr_ret(hv_vcpu_read_msr(vmm_vcpuid, msr, value));
+  }
 }
 
 int vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t value) {
@@ -348,7 +354,13 @@ int vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t value) {
       return tr_ret(err);
     }
   }
-  return tr_ret(hv_vcpu_write_msr(vmm_vcpuid, msr, value));
+  if (msr == MSR_IA32_EFER) {
+    // EFER seems to need some special handling, 
+    // let users touch the VMCS's value instead of MSR instead
+    return vmm_cpu_set_register(vm, cpu, VMM_X64_EFER, value);
+  } else {
+    return tr_ret(hv_vcpu_write_msr(vmm_vcpuid, msr, value));
+  }
 }
 
 static hv_return_t inc_rip_to_next(void) {
