@@ -6,6 +6,8 @@
 #include <string>
 #include <fcntl.h>
 #include <boost/program_options.hpp>
+#include <processor_flags.h>
+#include <processor_msrs.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
@@ -24,7 +26,6 @@ extern "C" {
 #include "syscall.h"
 #include "linux/errno.h"
 #include "x86/irq_vectors.h"
-#include "x86/specialreg.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
 }
@@ -149,6 +150,13 @@ main_loop(int return_on_sigret)
     }
     default:
       printk("other exit reason: %llu\n", exit_reason);
+#ifdef _WIN32
+      // TODO: Implement VMM_CTRL_NATIVE_EXIT_REASON in libhv
+      uint64_t native_exit_reason = 0;
+      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      printk("native exit reason: %llu\n", native_exit_reason);
+      abort();
+#endif
     }
   }
 
@@ -160,15 +168,16 @@ init_special_regs()
 {
   uint64_t cr0;
   read_register(VMM_X64_CR0, &cr0);
-  write_register(VMM_X64_CR0, (cr0 & ~CR0_EM) | CR0_MP);
+  write_register(VMM_X64_CR0, (cr0 & ~X86_CR0_EM) | X86_CR0_MP);
 
   uint64_t cr4;
   read_register(VMM_X64_CR4, &cr4);
-  write_register(VMM_X64_CR4, cr4 | CR4_PAE | CR4_OSFXSR | CR4_OSXMMEXCPT | CR4_VMXE | CR4_OSXSAVE);
+  write_register(VMM_X64_CR4, cr4 | X86_CR4_PAE | X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT | X86_CR4_VMXE | X86_CR4_OSXSAVE);
 
   uint64_t efer;
   read_register(VMM_X64_EFER, &efer);
-  write_register(VMM_X64_EFER, efer | EFER_LME | EFER_LMA);
+  write_register(VMM_X64_EFER, efer | EFER_LME | EFER_LMA | EFER_NX);
+  write_msr(MSR_IA32_EFER, EFER_LME | EFER_LMA | EFER_NX);
 }
 
 TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];
