@@ -15,15 +15,20 @@ namespace bi = boost::interprocess;
 int
 generic_to_page_prot(int prot, bool cow)
 {
+  int w_prot;
   if (prot & PROT_WRITE) {
     if (cow) {
-      return PAGE_WRITECOPY;
+      w_prot = PAGE_WRITECOPY;
     } else {
-      return PAGE_READWRITE;
+      w_prot = PAGE_READWRITE;
     }
   } else {
-    return PAGE_READONLY;
+    w_prot = PAGE_READONLY;
   }
+  if (prot & PROT_EXEC) {
+    w_prot <<= 4;
+  }
+  return w_prot;
 }
 
 int
@@ -70,10 +75,6 @@ platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back,
   } else {
     w_acc = FILE_MAP_READ;
   }
-  int w_prot = generic_to_page_prot(prot, !writes_back);
-  if (prot & PROT_EXEC) {
-    w_prot <<= 4;
-  }
   DWORD size_high, size_low;
   if (size == -1) { // Treat as equivalent to the file size
     size_low = GetFileSize(f, &size_high);
@@ -83,7 +84,7 @@ platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back,
     }
     size = (size_high << 32) | size_low;
   }
-  HANDLE m = CreateFileMapping(f, NULL, w_prot, size_high, size_low, NULL);
+  HANDLE m = CreateFileMapping(f, NULL, generic_to_page_prot(prot, !writes_back), size_high, size_low, NULL);
   if (m == INVALID_HANDLE_VALUE) {
     goto out_close_mapping;
   }
