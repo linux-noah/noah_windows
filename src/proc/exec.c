@@ -88,7 +88,7 @@ load_elf_interp(const char *path, uint64_t load_addr)
   write_register(VMM_X64_RIP, load_addr + h->e_entry);
   proc.mm->start_brk = map_top;
 
-  platform_unmap_mem(data, size);
+  platform_free_filemapping(data, size);
 
   return 0;
 }
@@ -399,10 +399,21 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
     return -LINUX_EINVAL;
   }
 
+  /*
+  // File Read
+  struct stat st;
+  int fd = open(elf_path, O_RDONLY);
+  fstat(fd, &st);
+  int size = st.st_size;
+  platform_map_mem(&data, size, PROT_READ | PROT_EXEC | PROT_WRITE);
+  read(fd, data, size);
+  */
+  // Memory-mapped file
   int size = platform_alloc_filemapping(&data, -1, PROT_READ | PROT_EXEC, false, 0, elf_path);
   if (size < 0) {
     return size;
   }
+  //close(fd);
 
   prepare_newproc();
 

@@ -89,6 +89,11 @@ main_loop(int return_on_sigret)
     get_vcpu_state(VMM_CTRL_EXIT_REASON, &exit_reason);
 
     switch (exit_reason) {
+    case VMM_EXIT_HLT:
+      printk("reason: halt\n");
+      assert(false);
+      break;
+
     case VMM_EXIT_VMCALL:
       printk("reason: vmcall\n");
       assert(false);
