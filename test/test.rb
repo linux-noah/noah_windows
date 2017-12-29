@@ -61,8 +61,7 @@ def noah_binname
   @options[:noah_binname] + " --mnt=\"#{__dir__}/testing_root\""
 end
 
-def cmake_arch_name
-  return @options[:arch] if @options[:arch]
+def host_arch_name
   case RbConfig::CONFIG['host_os']
   when /mswin|msys|mingw|cygwin/
     "Windows"
@@ -75,9 +74,14 @@ def cmake_arch_name
   end
 end
 
+def test_arch_name
+  return @options[:arch] if @options[:arch]
+  host_arch_name
+end
+
 def collect_tests(test_dirname)
   candidates = Dir.glob(__dir__ + "/#{test_dirname}/build/*") \
-    + Dir.glob(__dir__ + "/arch/#{cmake_arch_name}/#{test_dirname}/build/*")
+    + Dir.glob(__dir__ + "/arch/#{test_arch_name}/#{test_dirname}/build/*")
   return candidates if @options[:targets].nil?
   candidates.filter! {|filename| @options[:targets].include?(File.basename(filename))}
   candidates
@@ -127,7 +131,7 @@ def test_stdout
     if File.exists?(testdata_base + ".stdin")
       target_stdin = (testdata_base + ".stdin").shellescape 
     else
-      target_stdin = cmake_arch_name == "Windows" ? "NUL" : "/dev/null"
+      target_stdin = host_arch_name == "Windows" ? "NUL" : "/dev/null"
     end
     target_arg = File.exists?(testdata_base + ".arg") ? File.read(testdata_base + ".arg") : ""
     expected = File.read(testdata_base + ".expected")
