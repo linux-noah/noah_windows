@@ -453,9 +453,15 @@ to_vmm_exit_reason(uint32_t hax_exit_status)
 {
   // VMEntry failure will be reported as VMM_EXIT_SHUTDOWN in HAXM
   switch (hax_exit_status) {
-  case HAX_EXIT_HLT: return VMM_EXIT_HLT;
   case HAX_EXIT_IO: return VMM_EXIT_IO;
+  case HAX_EXIT_MMIO: return VMM_EXIT_MMIO;
+  case HAX_EXIT_REAL: return VMM_EXIT_REALMODE;
+  case HAX_EXIT_INTERRUPT: return VMM_EXIT_EXCEPTION;
+  case HAX_EXIT_UNKNOWN_VMEXIT: return VMM_EXIT_HAX_UNKNOWN;
+  case HAX_EXIT_HLT: return VMM_EXIT_HLT;
   case HAX_EXIT_STATECHANGE: return VMM_EXIT_SHUTDOWN;
+  case HAX_EXIT_PAUSED: return VMM_EXIT_HAX_PAUSED;
+  case HAX_EXIT_FAST_MMIO: return VMM_EXIT_IO;
   default:
     fprintf(stderr, "Unexpected HAX's exit_status: %d\n", hax_exit_status);
     assert(false);
