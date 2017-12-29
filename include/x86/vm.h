@@ -6,14 +6,14 @@
 
 /* pages */
 
-#define PTE_P           0x001   // Present
-#define PTE_W           0x002   // Writeable
-#define PTE_U           0x004   // User
-#define PTE_PS          0x080   // Page Size
-#define PTE_NX          0x8000000000000000UL // No Execute
+#define PTE_P           0x001ULL   // Present
+#define PTE_W           0x002ULL   // Writeable
+#define PTE_U           0x004ULL   // User
+#define PTE_PS          0x080ULL   // Page Size
+#define PTE_NX          0x8000000000000000ULL // No Execute
 
 typedef enum {
-  PAGE_4KB,
+  PAGE_4KB = 0,
   PAGE_2MB,
   PAGE_1GB,
   PAGE_PML4E,

@@ -30,6 +30,9 @@ extern "C" {
 #include "x86/vmx.h"
 }
 
+gaddr_t syscall_entry_addr;
+gaddr_t exception_entry_addr;
+
 static bool
 is_syscall(uint64_t rip)
 {
@@ -80,6 +83,14 @@ main_loop(int return_on_sigret)
   /* main_loop returns only if return_on_sigret == 1 && rt_sigreturn is invoked.
      see also: rt_sigsuspend */
 
+  /*
+   * System call and exception hooking mecahism depends on whether the platform's
+   * VMM allows VMExit on exceptions.
+   * If it allows, exceptions are delivered directly by VMM and system calls are 
+   * hooked by clearing EFER_SCE and inspecting #UD.
+   * Otherwise, currently they are hooked by putting trampoline codes in the kernel space.
+   * Those trampoline codes execute "hlt" instruction to cause VMExit.
+   */
   while (task_run() == 0) {
 
     /* dump_instr(); */
@@ -89,10 +100,23 @@ main_loop(int return_on_sigret)
     get_vcpu_state(VMM_CTRL_EXIT_REASON, &exit_reason);
 
     switch (exit_reason) {
-    case VMM_EXIT_HLT:
-      printk("reason: halt\n");
+    case VMM_EXIT_HLT: {
+      uint64_t rip;
+      read_register(VMM_X64_RIP, &rip);
+      if (rip - 1 == syscall_entry_addr) {
+        uint64_t rcx;
+        read_register(VMM_X64_RCX, &rcx);
+        write_register(VMM_X64_RIP, rcx); // Set RIP to the next instruction of syscall
+        int r = handle_syscall();
+        if (return_on_sigret && r < 0) {
+          return;
+        }
+        continue;
+      }
+
       assert(false);
       break;
+    }
 
     case VMM_EXIT_VMCALL:
       printk("reason: vmcall\n");
@@ -123,7 +147,6 @@ main_loop(int return_on_sigret)
         if (is_syscall(rip)) {
           write_register(VMM_X64_RIP, rip + 2); // Increment RIP to the next instruction
           int r = handle_syscall();
-          read_register(VMM_X64_RIP, &rip); // Reload rip for execve
           if (return_on_sigret && r < 0) {
             return;
           }
@@ -163,30 +186,8 @@ main_loop(int return_on_sigret)
       uint64_t native_exit_reason = 0;
       get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
       // TODO: Define Basic exit reason constants in libhv
-      static const int EPT_VIOLATION = 48;
-      if (native_exit_reason != EPT_VIOLATION) {
-        // Something unimplemented has happened
-        abort();
-      }
-      uint64_t rip;
-      read_register(VMM_X64_RIP, &rip);
-      if (rip == ept_hole) {
-        // Interrupt or syscall Instruction
-        uint64_t rcx;
-        read_register(VMM_X64_RCX, &rcx);
-        if (is_syscall(rcx - 2)) {
-          write_register(VMM_X64_RIP, rcx); // Set RIP to the next instruction of syscall
-          int r = handle_syscall();
-          read_register(VMM_X64_RIP, &rip); // Reload RIP for excve
-          if (return_on_sigret && r < 0) {
-            return;
-          }
-        }
-      } else {
-        // User-space page fault, unimplemented
-        abort();
-      }
-
+      printk("Unexpected VMM_EXIT_SHUTDOWN\n");
+      abort();
       break;
     }
 
@@ -218,37 +219,53 @@ init_special_regs()
   read_register(VMM_X64_CR4, &cr4);
   write_register(VMM_X64_CR4, cr4 | X86_CR4_PAE | X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT | X86_CR4_VMXE | X86_CR4_OSXSAVE);
 
-  // Change EFER_SCE according to OS
-  // System call hooking mecahism depends on whether a platform's VMM allows VMExit on #UD exception.
-  // If it allows, clear EFER_SCE and hook system calls by exception VMM_EXIT_EXCEPTION.
-  // Otherwise, currently hooking system calls by EPF fault setting EFER_SCE and making LSTAR an invalid address.
   uint64_t efer;
   read_register(VMM_X64_EFER, &efer);
   efer |= EFER_LME | EFER_LMA | EFER_NX;
-#ifdef _WIN32
-  efer |= EFER_SCE;
-#endif
   write_register(VMM_X64_EFER, efer);
   write_msr(MSR_IA32_EFER, efer);
-#ifdef _WIN32
-  write_msr(MSR_IA32_LSTAR, ept_hole);
-  write_msr(MSR_IA32_FMASK, 0);
-  write_msr(MSR_IA32_FMASK, 0);
-  write_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
-#endif
 }
 
 TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];
 gate_desc_t idt;
 gaddr_t idt_ptr;
 
+TYPEDEF_PAGE_ALIGNED(uint8_t) syscall_entry_t[1];
+syscall_entry_t syscall_entry;
+TYPEDEF_PAGE_ALIGNED(uint8_t) exception_entry_t[256];
+exception_entry_t exception_entry;
+
 void
 init_idt()
 {
-  idt_ptr = kmap(idt, 0x1000, PROT_READ | PROT_WRITE);
+  idt_ptr = kmap(idt, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE);
 
   write_register(VMM_X64_IDT_BASE, idt_ptr);
   write_register(VMM_X64_IDT_LIMIT, sizeof idt);
+
+#ifdef _WIN32
+  // Set up syscall and interrupt trampolines
+  static const uint8_t OP_HLT = '\xf4';
+  uint64_t efer;
+  read_register(VMM_X64_EFER, &efer);
+  efer |= EFER_SCE;
+  write_register(VMM_X64_EFER, efer);
+  write_msr(MSR_IA32_EFER, efer);
+  syscall_entry[0] = OP_HLT;
+  syscall_entry_addr = kmap(reinterpret_cast<void *>(syscall_entry), PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
+  write_msr(MSR_IA32_LSTAR, syscall_entry_addr);
+  write_msr(MSR_IA32_FMASK, 0);
+  write_msr(MSR_IA32_FMASK, 0);
+  write_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
+
+  exception_entry_addr = kmap(reinterpret_cast<void *>(exception_entry), PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
+  for (int i = 0; i < 256; i++) {
+    exception_entry[i] = OP_HLT;
+    // Set idt[i] to there
+  }
+#endif
+
+
 }
 
 void
