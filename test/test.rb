@@ -54,14 +54,14 @@ def relative(path)
 end
 
 def puts_testname(target)
-  puts "\n===#{File.basename(target)}" if @options[:verbose]
+  puts "\n===#{File.basename(target)}:(#{target})" if @options[:verbose]
 end
 
 def noah_binname
   @options[:noah_binname] + " --mnt=\"#{__dir__}/testing_root\""
 end
 
-def arch_dirname
+def cmake_arch_name
   return @options[:arch] if @options[:arch]
   case RbConfig::CONFIG['host_os']
   when /mswin|msys|mingw|cygwin/
@@ -77,16 +77,22 @@ end
 
 def collect_tests(test_dirname)
   candidates = Dir.glob(__dir__ + "/#{test_dirname}/build/*") \
-    + Dir.glob(__dir__ + "/arch/#{arch_dirname}/#{test_dirname}/build/*")
+    + Dir.glob(__dir__ + "/arch/#{cmake_arch_name}/#{test_dirname}/build/*")
   return candidates if @options[:targets].nil?
   candidates.filter! {|filename| @options[:targets].include?(File.basename(filename))}
   candidates
 end
 
+def run_cmd(cmd)
+  if @options[:verbose]
+    puts "---cmd: " + cmd
+  end
+  Open3.capture3(cmd)
+end
+
 def test_assertion
   collect_tests("test_assertion").each do |target|
-    puts_testname(target)
-    out, err, status = Open3.capture3("#{noah_binname} #{relative(target).shellescape}")
+    out, err, status = run_cmd("#{noah_binname} #{relative(target).shellescape}")
     
     nr_tests_match = /1->([0-9]+)/.match(out.lines[0])
     if nr_tests_match
@@ -118,10 +124,14 @@ def test_stdout
   collect_tests("test_stdout").each do |target|
     puts_testname(target)
     testdata_base = File.dirname(target) + "/../" + File.basename(target)
-    target_stdin = File.exists?(testdata_base + ".stdin") ? (testdata_base + ".stdin").shellescape : "/dev/null"
+    if File.exists?(testdata_base + ".stdin")
+      target_stdin = (testdata_base + ".stdin").shellescape 
+    else
+      target_stdin = cmake_arch_name == "Windows" ? "NUL" : "/dev/null"
+    end
     target_arg = File.exists?(testdata_base + ".arg") ? File.read(testdata_base + ".arg") : ""
     expected = File.read(testdata_base + ".expected")
-    out, err, status = Open3.capture3("#{noah_binname} #{relative(target).shellescape} #{target_arg} < #{target_stdin}")
+    out, err, status = run_cmd("#{noah_binname} #{relative(target).shellescape} #{target_arg} < #{target_stdin}")
 
     if out == expected
       @stdout[:pass] += 1
@@ -145,7 +155,7 @@ def test_shell
     puts_testname(target)
     run = __dir__ + "/test_shell/" + File.basename(target) + ".sh"
 
-    _, err, status = Open3.capture3("NOAH=\"#{noah_binname}\" TARGET=#{relative(target).shellescape} /bin/bash #{relative(run).shellescape}")
+    _, err, status = run_cmd("NOAH=\"#{noah_binname}\" TARGET=#{relative(target).shellescape} /bin/bash #{relative(run).shellescape}")
 
     if status.success?
       @shell[:pass] += 1
