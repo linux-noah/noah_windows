@@ -212,7 +212,11 @@ DEFINE_SYSCALL(read, int, fd, gaddr_t, buf_ptr, size_t, size)
   */
   //struct iovec iov = { buf, size };
   // r = file->ops->readv(file, &iov, 1);
+#ifdef _WIN32
   r = syswrap(_read(fd, buf, size));
+#else
+  r = syswrap(read(fd, buf, size));
+#endif
   if (r < 0) {
     goto out;
   }
@@ -244,7 +248,11 @@ DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
   }*/
   //struct iovec iov = { buf, size };
   // r =  file->ops->writev(file, &iov, 1);
+#ifdef _WIN32
   r = syswrap(_write(fd, buf, size));
+#else
+  r = syswrap(write(fd, buf, size));
+#endif
 out:
   free(buf);
   return r;

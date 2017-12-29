@@ -7,7 +7,6 @@
 #include "linux/fs.h"
 
 #ifdef _WIN32
-#define AT_FDCWD -100
 struct iovec {
   void *iov_base;
   size_t iov_len;
@@ -87,6 +86,9 @@ int darwinfs_close(struct file *file);
 int darwinfs_writev(struct file *file, const struct iovec *iov, size_t iovcnt);
 int darwinfs_readv(struct file *file, struct iovec *iov, size_t iovcnt);
 
+#endif
+#ifdef _WIN32
+#define AT_FDCWD -100
 #endif
 
 #endif
