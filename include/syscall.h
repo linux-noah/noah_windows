@@ -339,8 +339,8 @@
 #elif defined(_WIN32)
 
 #define SYSCALLS                          \
-  SYSCALL(0, unimplemented)               \
-  SYSCALL(1, unimplemented)               \
+  SYSCALL(0, read)                        \
+  SYSCALL(1, write)                       \
   SYSCALL(2, unimplemented)               \
   SYSCALL(3, unimplemented)               \
   SYSCALL(4, unimplemented)               \

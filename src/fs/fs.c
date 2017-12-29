@@ -1,31 +1,3 @@
-/*-
- * Copyright (c) 2016 Yuichi Nishiwaki and Takaya Saeki
- * Copyright (c) 1994-1995 Søren Schmidt
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 
 #include "common.h"
 #include "noah.h"
@@ -53,6 +25,9 @@
 #include <sys/syslimits.h>
 #endif
 #endif
+#ifdef _WIN32
+#include <io.h>
+#endif
 
 #include <stddef.h>
 #include <stdio.h>
@@ -65,7 +40,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-
+#ifdef __APPLE__
 int
 resolve_path(const struct dir *parent, const char *name, int flags, struct path *path, int loop)
 {
@@ -218,3 +193,59 @@ vkern_close(int fd)
   return n;
 }
 
+#endif
+
+DEFINE_SYSCALL(read, int, fd, gaddr_t, buf_ptr, size_t, size)
+{
+  int r;
+  char *buf = malloc(size);
+  /*
+  struct file *file = get_file(fd);
+  if (file == NULL) {
+    r = -LINUX_EBADF;
+    goto out;
+  }
+  if (file->ops->readv == NULL) {
+    r = -LINUX_EBADF;
+    goto out;
+  }
+  */
+  //struct iovec iov = { buf, size };
+  // r = file->ops->readv(file, &iov, 1);
+  r = syswrap(_read(fd, buf, size));
+  if (r < 0) {
+    goto out;
+  }
+  if (copy_to_user(buf_ptr, buf, r)) {
+    r = -LINUX_EFAULT;
+    goto out;
+  }
+out:
+  free(buf);
+  return r;
+}
+
+DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
+{
+  int r;
+  char *buf = malloc(size);
+  if (copy_from_user(buf, buf_ptr, size)) {
+    r = -LINUX_EFAULT;
+    goto out;
+  }
+  /*struct file *file = get_file(fd);
+  if (file == NULL) {
+    r = -LINUX_EBADF;
+    goto out;
+  }
+  if (file->ops->writev == NULL) {
+    r = -LINUX_EBADF;
+    goto out;
+  }*/
+  //struct iovec iov = { buf, size };
+  // r =  file->ops->writev(file, &iov, 1);
+  r = syswrap(_write(fd, buf, size));
+out:
+  free(buf);
+  return r;
+}
