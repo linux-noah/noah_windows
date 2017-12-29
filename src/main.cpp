@@ -103,6 +103,12 @@ main_loop(int return_on_sigret)
       /* References:
        * - Intel SDM 27.2.2, Table 24-15: Information for VM Exits Due to Vectored Events
        */
+#ifdef _WIN32
+      // Temorary code for debug
+      uint64_t native_exit_reason = 0;
+      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      abort();
+#endif
       uint64_t exc_vec;
       get_vcpu_state(VMM_CTRL_EXCEPTION_VECTOR, &exc_vec);
       switch (exc_vec) {
@@ -115,9 +121,9 @@ main_loop(int return_on_sigret)
         uint64_t rip;
         read_register(VMM_X64_RIP, &rip);
         if (is_syscall(rip)) {
+          write_register(VMM_X64_RIP, rip + 2); // Increment RIP to the next instruction
           int r = handle_syscall();
-          read_register(VMM_X64_RIP, &rip); /* reload rip for execve */
-          write_register(VMM_X64_RIP, rip + 2);
+          read_register(VMM_X64_RIP, &rip); // Reload rip for execve
           if (return_on_sigret && r < 0) {
             return;
           }
@@ -153,6 +159,37 @@ main_loop(int return_on_sigret)
       }
       break;
     }
+    case VMM_EXIT_SHUTDOWN: {
+      uint64_t native_exit_reason = 0;
+      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      // TODO: Define Basic exit reason constants in libhv
+      static const int EPT_VIOLATION = 48;
+      if (native_exit_reason != EPT_VIOLATION) {
+        // Something unimplemented has happened
+        abort();
+      }
+      uint64_t rip;
+      read_register(VMM_X64_RIP, &rip);
+      if (rip == ept_hole) {
+        // Interrupt or syscall Instruction
+        uint64_t rcx;
+        read_register(VMM_X64_RCX, &rcx);
+        if (is_syscall(rcx - 2)) {
+          write_register(VMM_X64_RIP, rcx); // Set RIP to the next instruction of syscall
+          int r = handle_syscall();
+          read_register(VMM_X64_RIP, &rip); // Reload RIP for excve
+          if (return_on_sigret && r < 0) {
+            return;
+          }
+        }
+      } else {
+        // User-space page fault, unimplemented
+        abort();
+      }
+
+      break;
+    }
+
     default:
       printk("other exit reason: %llu\n", exit_reason);
 #ifdef _WIN32
@@ -160,6 +197,8 @@ main_loop(int return_on_sigret)
       uint64_t native_exit_reason = 0;
       get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
       printk("native exit reason: %llu\n", native_exit_reason);
+      uint64_t rip;
+      read_register(VMM_X64_RIP, &rip);
       abort();
 #endif
     }
@@ -179,10 +218,24 @@ init_special_regs()
   read_register(VMM_X64_CR4, &cr4);
   write_register(VMM_X64_CR4, cr4 | X86_CR4_PAE | X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT | X86_CR4_VMXE | X86_CR4_OSXSAVE);
 
+  // Change EFER_SCE according to OS
+  // System call hooking mecahism depends on whether a platform's VMM allows VMExit on #UD exception.
+  // If it allows, clear EFER_SCE and hook system calls by exception VMM_EXIT_EXCEPTION.
+  // Otherwise, currently hooking system calls by EPF fault setting EFER_SCE and making LSTAR an invalid address.
   uint64_t efer;
   read_register(VMM_X64_EFER, &efer);
-  write_register(VMM_X64_EFER, efer | EFER_LME | EFER_LMA | EFER_NX);
-  write_msr(MSR_IA32_EFER, EFER_LME | EFER_LMA | EFER_NX);
+  efer |= EFER_LME | EFER_LMA | EFER_NX;
+#ifdef _WIN32
+  efer |= EFER_SCE;
+#endif
+  write_register(VMM_X64_EFER, efer);
+  write_msr(MSR_IA32_EFER, efer);
+#ifdef _WIN32
+  write_msr(MSR_IA32_LSTAR, ept_hole);
+  write_msr(MSR_IA32_FMASK, 0);
+  write_msr(MSR_IA32_FMASK, 0);
+  write_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
+#endif
 }
 
 TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];

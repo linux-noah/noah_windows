@@ -36,6 +36,7 @@ struct mm {
 };
 
 extern const gaddr_t user_addr_max;
+extern const gaddr_t ept_hole;
 
 extern struct mm vkern_mm;
 

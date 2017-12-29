@@ -27,12 +27,35 @@ struct mm vkern_mm;
 
 void init_mmap(struct mm *mm);
 
+/*
+ * # Memory layout
+ *
+ * |                      | 
+ * | The virtual kernel's | 
+ * |    memory space      | 
+ * |                      | 
+ * |----------------------| 0x0000007fc0002000 
+ * |                      | 
+ * |                      | MSR of syscall and entries of IDT are
+ * |  Leave EPT unmapped  | set here in order to trap such exceptions
+ * |                      | by EPT fault on HAXM
+ * |                      | 
+ * |----------------------| 0x0000007fc0001000 
+ * |  Not used currently  |
+ * |----------------------| 0x0000007fc0000000 
+ * |                      | 
+ * |  User space memory   |
+ * |                      | 
+ *
+*/
+
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
+const gaddr_t ept_hole = 0x0000007fc0001000ULL;
 
 gaddr_t
 kmap(void *ptr, size_t size, int flags)
 {
-  static uint64_t noah_kern_brk = 0x0000007fc0000000ULL; // user_addr_max, hard coding for a workaroud of MSVC's complaining
+  static uint64_t noah_kern_brk = 0x0000007fc0002000ULL; // user_addr_max + 0x2000, hard coding for a workaroud of MSVC's complaining
 
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
