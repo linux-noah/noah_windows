@@ -35,6 +35,7 @@ add_executable(noah
   src/debug.c
   src/proc/exec.c
   src/proc/process.c
+  src/proc/fork.cpp
   src/fs/fs.c
   src/mm/mm.c
   src/mm/mmap.c
