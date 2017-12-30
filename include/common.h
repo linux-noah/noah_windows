@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "cross_platform.h"
 
+
 /*
  * ``_MAP(f, t0, v0, t1, v1, ...)'' => ``f(t0, v0), f(t1, v1), ...''
  */
@@ -47,7 +48,7 @@
 #define DEFINE_SYSCALL(name, ...)               \
   _EXPAND_VA_ARGS(DECLARE_SCFUNCT(name, ##__VA_ARGS__))          \
   _EXPAND_VA_ARGS(DEFINE_SCWRAPPER(name, ##__VA_ARGS__))         \
-  _EXPAND_VA_ARGS(DEFINE_SCFUNCT(name, ##__VA_ARGS__))
+  _EXPAND_VA_ARGS(DEFINE_SCFUNCT(name, ##__VA_ARGS__))           
 
 
 /*

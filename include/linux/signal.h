@@ -34,6 +34,7 @@
 #include "linux/const.h"
 #include "types.h"
 #include <signal.h>
+#include <stdint.h>
 
 /* signaling */
 #define LINUX_STSIGNUM(_)\
@@ -53,7 +54,7 @@
 	DECL_LINUX(_,SIGPIPE,		13)\
 	DECL_LINUX(_,SIGALRM,		14)\
 	DECL_LINUX(_,SIGTERM,		15)\
-	DECL_LINUX(_,SIGSTKFLT,		16, LINUX_SPECIFIC)/* On x86, SIGSTKFLT is never used */\
+	DECL_LINUX(_,SIGSTKFLT,	16)/* On x86, SIGSTKFLT is never used */\
 	DECL_LINUX(_,SIGCHLD,		17)\
 	DECL_LINUX(_,SIGCONT,		18)\
 	DECL_LINUX(_,SIGSTOP,		19)\
@@ -63,12 +64,12 @@
 	DECL_LINUX(_,SIGURG,		23)\
 	DECL_LINUX(_,SIGXCPU,		24)\
 	DECL_LINUX(_,SIGXFSZ,		25)\
-	DECL_LINUX(_,SIGVTALRM,		26)\
+	DECL_LINUX(_,SIGVTALRM,	26)\
 	DECL_LINUX(_,SIGPROF,		27)\
-	DECL_LINUX(_,SIGWINCH,		28)\
-	DECL_LINUX(_,SIGIO,		29)\
+	DECL_LINUX(_,SIGWINCH,	28)\
+	DECL_LINUX(_,SIGIO,		  29)\
 	DECL_ALIAS(_,SIGPOLL,		LINUX_SIGIO)\
-	DECL_LINUX(_,SIGPWR,		30, LINUX_SPECIFIC) /* Noah vkernel wll never send SIGPWR */ \
+	DECL_LINUX(_,SIGPWR,		30) /* Noah vkernel wll never send SIGPWR */ \
 	DECL_LINUX(_,SIGSYS,		31)\
 
 #define LINUX_SIGTBLSZ 31
@@ -76,8 +77,6 @@
 #define LINUX_SIGRTMAX 64
 
 DECLARE_CENUM(signum, LINUX_STSIGNUM);
-DECLARE_CMAP_FUNC(native_to_linux, signum, LINUX_STSIGNUM);
-DECLARE_CMAP_FUNC(linux_to_native, signum, LINUX_STSIGNUM);
 DECLARE_CSTR_FUNC(signum, LINUX_STSIGNUM);
 
 
@@ -238,7 +237,7 @@ typedef struct l_siginfo {
     struct {
       l_timer_t	_tid;
       l_int		_overrun;
-      char		_pad[sizeof(l_uid_t) - sizeof(int)];
+      //char		_pad[sizeof(l_uid_t) - sizeof(int)];
       union l_sigval	_sigval;
       l_uint		_sys_private;
     } _timer;
