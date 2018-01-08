@@ -54,12 +54,12 @@ resolve_path(const struct dir *parent, const char *name, int flags, struct path 
   /* resolve mountpoints */
   if (*name == '/') {
     if (name[1] == '\0') {
-      dir.fd = proc.fileinfo.rootfd;
+      dir.fd = proc->fileinfo.rootfd;
       strcpy(path->subpath, ".");
       goto out;
     }
     if (strncmp(name, "/Users", sizeof "/Users" - 1) && strncmp(name, "/Volumes", sizeof "/Volumes" - 1) && strncmp(name, "/dev", sizeof "/dev" - 1) && strncmp(name, "/tmp", sizeof "/tmp" - 1) && strncmp(name, "/private", sizeof "/private" - 1)) {
-      dir.fd = proc.fileinfo.rootfd;
+      dir.fd = proc->fileinfo.rootfd;
       name++;
     }
   }
@@ -163,7 +163,7 @@ vkern_openat(int atdirfd, const char *name, int flags, int mode)
 {
   int ret;
 
-  pthread_rwlock_wrlock(&proc.fileinfo.fdtable_lock);
+  pthread_rwlock_wrlock(&proc->fileinfo.fdtable_lock);
   int fd = do_openat(atdirfd, name, flags, mode);
   if (fd < 0) {
     ret = fd;
@@ -174,7 +174,7 @@ vkern_openat(int atdirfd, const char *name, int flags, int mode)
   close(fd);
 
 out:
-  pthread_rwlock_unlock(&proc.fileinfo.fdtable_lock);
+  pthread_rwlock_unlock(&proc->fileinfo.fdtable_lock);
   return ret;
 }
 
@@ -187,9 +187,9 @@ vkern_open(const char *path, int l_flags, int mode)
 int
 vkern_close(int fd)
 {
-  pthread_rwlock_wrlock(&proc.fileinfo.fdtable_lock);
-  int n = do_close(&proc.fileinfo.vkern_fdtable, fd);
-  pthread_rwlock_unlock(&proc.fileinfo.fdtable_lock);
+  pthread_rwlock_wrlock(&proc->fileinfo.fdtable_lock);
+  int n = do_close(&proc->fileinfo.vkern_fdtable, fd);
+  pthread_rwlock_unlock(&proc->fileinfo.fdtable_lock);
   return n;
 }
 

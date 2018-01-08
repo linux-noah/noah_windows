@@ -15,7 +15,7 @@ addr_ok(gaddr_t addr, int access)
   if (addr >= user_addr_max) {
     return false;
   }
-  struct mm_region *region = find_region(addr, proc.mm);
+  struct mm_region *region = find_region(addr, proc->mm);
   if (!region) {
     return false;
   }

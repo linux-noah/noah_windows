@@ -284,13 +284,14 @@ init_fpu()
 static void
 init_first_proc(const char *root)
 {
-  memset(&proc, 0, sizeof(proc));
-  proc.nr_tasks = 1;
-  pthread_rwlock_init(&proc.lock, NULL);
-  proc.mm = (struct mm *)malloc(sizeof(struct mm));
-  INIT_LIST_HEAD(&proc.tasks);
-  list_add(&task.head, &proc.tasks);
-  init_mm(proc.mm);
+  proc = reinterpret_cast<struct proc *>(malloc(sizeof(proc)));
+  memset(proc, 0, sizeof(proc));
+  proc->nr_tasks = 1;
+  pthread_rwlock_init(&proc->lock, NULL);
+  proc->mm = reinterpret_cast<struct mm *>(malloc(sizeof(struct mm)));
+  INIT_LIST_HEAD(&proc->tasks);
+  list_add(&task.head, &proc->tasks);
+  init_mm(proc->mm);
   // init_signal();
   /*
   int rootfd = open(root, O_RDONLY | O_DIRECTORY);
@@ -301,8 +302,8 @@ init_first_proc(const char *root)
   // init_fileinfo(rootfd);
   close(rootfd);
   */
-  proc.pfutex = kh_init(pfutex);
-  //pthread_mutex_init(&proc.futex_mutex, NULL);
+  proc->pfutex = kh_init(pfutex);
+  //pthread_mutex_init(&proc->futex_mutex, NULL);
   /*
   proc = {
     .lock = PTHREAD_RWLOCK_INITIALIZER,
@@ -346,13 +347,13 @@ void
 elevate_privilege(void)
 {
 #if defined(__unix__) || defined(__APPLE__)
-  pthread_rwlock_wrlock(&proc.cred.lock);
-  proc.cred.euid = 0;
-  proc.cred.suid = 0;
+  pthread_rwlock_wrlock(&proc->cred.lock);
+  proc->cred.euid = 0;
+  proc->cred.suid = 0;
   if (seteuid(0) != 0) {
     panic("elevate_privilege");
   }
-  pthread_rwlock_unlock(&proc.cred.lock);
+  pthread_rwlock_unlock(&proc->cred.lock);
 #endif
 }
 

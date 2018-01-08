@@ -164,7 +164,7 @@ init_mm(struct mm *mm)
 void *
 guest_to_host(gaddr_t gaddr)
 {
-  struct mm_region *region = find_region(gaddr, proc.mm);
+  struct mm_region *region = find_region(gaddr, proc->mm);
   if (!region) {
     region = find_region(gaddr, &vkern_mm);
   }

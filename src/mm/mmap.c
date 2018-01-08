@@ -34,8 +34,8 @@ gaddr_t
 alloc_region(size_t len)
 {
   len = roundup(len, PAGE_SIZE(PAGE_4KB));
-  proc.mm->current_mmap_top += len;
-  return proc.mm->current_mmap_top - len;
+  proc->mm->current_mmap_top += len;
+  return proc->mm->current_mmap_top - len;
 }
 
 int
@@ -46,7 +46,7 @@ do_munmap(gaddr_t gaddr, size_t size)
   }
   size = roundup(size, PAGE_SIZE(PAGE_4KB)); // Linux kernel also does this
 
-  struct mm_region *overlapping = find_region_range(gaddr, size, proc.mm);
+  struct mm_region *overlapping = find_region_range(gaddr, size, proc->mm);
   if (overlapping == NULL) {
     return -LINUX_ENOMEM;
   }
@@ -54,19 +54,19 @@ do_munmap(gaddr_t gaddr, size_t size)
   struct mm_region key = {.gaddr = gaddr, .size = size};
   while (region_compare(&key, overlapping) == 0) {
     if (overlapping->gaddr < gaddr) {
-      split_region(proc.mm, overlapping, gaddr);
+      split_region(proc->mm, overlapping, gaddr);
       overlapping = list_entry(overlapping->list.next, struct mm_region, list);
     }
     if (overlapping->gaddr + overlapping->size > gaddr + size) {
-      split_region(proc.mm, overlapping, gaddr + size);
+      split_region(proc->mm, overlapping, gaddr + size);
     }
     struct list_head *next = overlapping->list.next;
     list_del(&overlapping->list);
-    RB_REMOVE(mm_region_tree, &proc.mm->mm_region_tree, overlapping);
+    RB_REMOVE(mm_region_tree, &proc->mm->mm_region_tree, overlapping);
     vm_munmap(overlapping->gaddr, overlapping->size);
     platform_unmap_mem(overlapping->haddr, overlapping->size);
     free(overlapping);
-    if (next == &proc.mm->mm_regions)
+    if (next == &proc->mm->mm_regions)
       break;
     overlapping = list_entry(next, struct mm_region, list);
   }
@@ -123,7 +123,7 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
   }
 
   do_munmap(addr, len);
-  record_region(proc.mm, ptr, addr, len, l_prot, l_flags, fd, offset);
+  record_region(proc->mm, ptr, addr, len, l_prot, l_flags, fd, offset);
 
   vm_mmap(addr, len, linux_to_native_mprot(l_prot), ptr);
 

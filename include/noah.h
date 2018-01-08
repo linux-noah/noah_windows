@@ -123,7 +123,7 @@ struct proc {
   struct fileinfo fileinfo;
 };
 
-extern struct proc proc;
+extern struct proc *proc;
 _Thread_local extern struct task task;
 
 void init_signal(void);
