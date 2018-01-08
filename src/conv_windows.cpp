@@ -205,3 +205,15 @@ extern "C" {
   }
 
 }
+
+int
+linux_to_native_mflags(int l_mflags)
+{
+  int ret = MAP_INHERIT;
+  if (l_mflags & LINUX_MAP_PRIVATE)
+    ret |= MAP_FILE_PRIVATE;
+  if (l_mflags & LINUX_MAP_SHARED)
+    ret |= MAP_FILE_SHARED;
+
+  return ret;
+}

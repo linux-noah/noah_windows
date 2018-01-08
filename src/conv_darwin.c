@@ -314,3 +314,19 @@ linux_to_native_o_flags(int l_flags)
 
   return ret;
 }
+
+int
+linux_to_native_mflags(int l_mflags)
+{
+  int ret = 0;
+  if (l_mflags & LINUX_MAP_ANON)
+    ret |= MAP_ANON;
+  if (l_mflags & LINUX_MAP_ANONYMOUS)
+    ret |= MAP_ANONYMOUS;
+  if (l_mflags & LINUX_MAP_PRIVATE)
+    ret |= MAP_PRIVATE;
+  if (l_mflags & LINUX_MAP_SHARED)
+    ret |= MAP_SHARED;
+
+  return ret;
+}

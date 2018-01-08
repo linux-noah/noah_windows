@@ -153,6 +153,7 @@ struct rlimit; struct l_rlimit;
 
 int native_to_linux_mprot(int);
 int linux_to_native_mprot(int);
+int linux_to_native_mflags(int);
 
 #if defined(__unix__) || defined(__APPLE__)
 int linux_to_native_o_flags(int l_flags);

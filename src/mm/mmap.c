@@ -113,7 +113,7 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
     // TODO
     return -LINUX_EINVAL;
   } else {
-    err = platform_map_mem(&ptr, &handle, len, n_prot, (l_flags & LINUX_MAP_PRIVATE) != 0);
+    err = platform_map_mem(&ptr, &handle, len, n_prot, linux_to_native_mflags(l_flags));
   }
   if (err < 0) {
     panic("mmap failed. addr :0x%llx, len: 0x%lux, prot: %d, l_flags: %d, fd: %d, offset: 0x%llx\n", addr, len, l_prot, l_flags, fd, offset);

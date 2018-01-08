@@ -61,5 +61,5 @@ platform_unmap_mem(void *mem, platform_handle_t handle, size_t size)
 int
 platform_free_filemapping(void *addr, platform_handle_t handle, size_t size)
 {
-  return platform_unmap_mem(mem, size);
+  return platform_unmap_mem(addr, handle, size);
 }
