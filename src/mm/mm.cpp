@@ -1,10 +1,10 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include <cassert>
+#include <cstdlib>
 
+extern "C" {
 #if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
-#include <strings.h>
+#include <cstring>
 #endif
 
 #include "cross_platform.h"
@@ -18,6 +18,7 @@
 
 #include "x86/vm.h"
 #include "x86/specialreg.h"
+}
 
 /* 
  * Manage kernel memory space allocated by kmap.
@@ -25,7 +26,7 @@
  */
 struct mm vkern_mm;
 
-void init_mmap(struct mm *mm);
+extern "C" void init_mmap(struct mm *mm);
 
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 
@@ -49,9 +50,7 @@ kmap(void *ptr, size_t size, int flags)
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) pe_t[NR_PAGE_ENTRY];
-pe_t pml4 = {
-  [0] = PTE_U | PTE_W | PTE_P,
-};
+pe_t pml4 = {PTE_U | PTE_W | PTE_P, 0};
 gaddr_t pml4_ptr;
 pe_t pdp;
 
@@ -80,9 +79,9 @@ init_page()
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) gdt_t[3];
 gdt_t gdt = {
-  [SEG_NULL] = 0,                  // NULL SEL
-  [SEG_CODE] = 0x0020980000000000, // CODE SEL
-  [SEG_DATA] = 0x0000900000000000, // DATA SEL
+  0,                  // NULL SEL
+  0x0020980000000000, // CODE SEL
+  0x0000900000000000, // DATA SEL
 };
 gaddr_t gdt_ptr;
 
@@ -194,7 +193,9 @@ struct mm_region*
 /* Look up the mm_region which gaddr in [mm_region->gaddr, +size) */
 find_region(gaddr_t gaddr, struct mm *mm)
 {
-  struct mm_region find = {.gaddr = gaddr, .size = 1};
+  struct mm_region find;
+  find.gaddr = gaddr;
+  find.size = 1;
   return RB_FIND(mm_region_tree, &mm->mm_region_tree, &find);
 }
 
@@ -202,7 +203,9 @@ struct mm_region*
 /* Look up the lowest mm_region that overlaps with the region */
 find_region_range(gaddr_t gaddr, size_t size, struct mm *mm)
 {
-  struct mm_region find = {.gaddr = gaddr, .size = size};
+  struct mm_region find;
+  find.gaddr = gaddr;
+  find.size = size;
   struct mm_region *leftmost = RB_FIND(mm_region_tree, &mm->mm_region_tree, &find);
   if (leftmost == NULL)
     return NULL;
@@ -216,7 +219,7 @@ split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
 {
   assert(is_page_aligned((void*)gaddr, PAGE_4KB));
 
-  struct mm_region *tail = malloc(sizeof(struct mm_region));
+  struct mm_region *tail = reinterpret_cast<struct mm_region *>(malloc(sizeof(struct mm_region)));
   gaddr_t offset = gaddr - region->gaddr;
   tail->haddr = (char *)region->haddr + offset;
   tail->gaddr = gaddr;
@@ -236,16 +239,14 @@ record_region(struct mm *mm, void *haddr, gaddr_t gaddr, size_t size, int prot, 
 {
   assert(gaddr != 0);
 
-  struct mm_region *region = malloc(sizeof *region);
-  *region = (struct mm_region) {
-    .haddr = haddr,
-    .gaddr = gaddr,
-    .size = size,
-    .prot = prot,
-    .mm_flags = mm_flags,
-    .mm_fd = mm_fd,
-    .pgoff = pgoff
-  };
+  struct mm_region *region = reinterpret_cast<struct mm_region *>(malloc(sizeof *region));
+  region->haddr = haddr;
+  region->gaddr = gaddr;
+  region->size = size;
+  region->prot = prot;
+  region->mm_flags = mm_flags;
+  region->mm_fd = mm_fd;
+  region->pgoff = pgoff;
 
   if (RB_INSERT(mm_region_tree, &mm->mm_region_tree, region) != NULL) {
     panic("recording overlapping regions\n");

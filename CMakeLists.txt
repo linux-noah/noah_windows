@@ -37,7 +37,7 @@ add_executable(noah
   src/proc/process.c
   src/proc/fork.cpp
   src/fs/fs.c
-  src/mm/mm.c
+  src/mm/mm.cpp
   src/mm/mmap.c
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
