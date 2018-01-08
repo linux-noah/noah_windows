@@ -86,7 +86,7 @@ load_elf_interp(const char *path, uint64_t load_addr)
   }
 
   write_register(VMM_X64_RIP, load_addr + h->e_entry);
-  proc.mm->start_brk = map_top;
+  proc->mm->start_brk = map_top;
 
   platform_free_filemapping(data, size);
 
@@ -172,7 +172,7 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
   }
   else {
     write_register(VMM_X64_RIP, ehdr->e_entry + global_offset);
-    proc.mm->start_brk = map_top;
+    proc->mm->start_brk = map_top;
   }
 
   init_userstack(argc, argv, envp, load_base, ehdr, global_offset, interp ? map_top : 0);
@@ -369,9 +369,9 @@ prepare_newproc(void)
 {
   /* Reinitialize proc and task structures */
   /* Not handling locks seriously now because multi-thread execve is not implemented yet */
-  proc.nr_tasks = 1;
-  destroy_mm(proc.mm); // munlock is also done by unmapping mm
-  init_mm(proc.mm);
+  proc->nr_tasks = 1;
+  destroy_mm(proc->mm); // munlock is also done by unmapping mm
+  init_mm(proc->mm);
   init_reg_state();
   // reset_signal_state();
   // TODO: destroy LDT if it is implemented
@@ -394,7 +394,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   // if ((fd = vkern_open(elf_path, LINUX_O_RDONLY, 0)) < 0) {
   //  return fd;
   // }
-  if (proc.nr_tasks > 1) {
+  if (proc->nr_tasks > 1) {
     warnk("Multi-thread execve is not implemented yet\n");
     return -LINUX_EINVAL;
   }
@@ -439,7 +439,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   }
 
   platform_free_filemapping(data, size);
-  proc.mm->current_brk = proc.mm->start_brk;
+  proc->mm->current_brk = proc->mm->start_brk;
 
   return 0;
 }

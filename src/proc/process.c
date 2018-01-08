@@ -30,7 +30,7 @@
 
 
 
-struct proc proc;
+struct proc *proc;
 _Thread_local struct task task;
 
 DEFINE_SYSCALL(exit, int, reason)
@@ -42,13 +42,13 @@ DEFINE_SYSCALL(exit, int, reason)
     //do_futex_wake(task.clear_child_tid, 1);
   }
   destroy_vcpu();
-  pthread_rwlock_wrlock(&proc.lock);
-  if (proc.nr_tasks == 1) {
+  pthread_rwlock_wrlock(&proc->lock);
+  if (proc->nr_tasks == 1) {
     _exit(reason);
   } else {
-    proc.nr_tasks--;
+    proc->nr_tasks--;
     list_del(&task.head);
-    pthread_rwlock_unlock(&proc.lock);
+    pthread_rwlock_unlock(&proc->lock);
     pthread_exit(&reason);
   }
 }

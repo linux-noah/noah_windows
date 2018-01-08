@@ -6,6 +6,7 @@
 #include <string>
 #include <fcntl.h>
 #include <boost/program_options.hpp>
+#include <boost/interprocess/managed_external_buffer.hpp>
 #include <processor_flags.h>
 #include <processor_msrs.h>
 
@@ -17,12 +18,13 @@
 #endif
 #endif
 
+#include "mm.hpp"
 extern "C" {
 #include "cross_platform.h"
 #include "common.h"
+#include "noah.h"
 #include "vm.h"
 #include "mm.h"
-#include "noah.h"
 #include "syscall.h"
 #include "linux/errno.h"
 #include "x86/irq_vectors.h"
@@ -284,7 +286,7 @@ init_fpu()
 static void
 init_first_proc(const char *root)
 {
-  proc = reinterpret_cast<struct proc *>(malloc(sizeof(proc)));
+  proc = vkern_shm->construct<struct proc>("proc", std::nothrow)();
   memset(proc, 0, sizeof(proc));
   proc->nr_tasks = 1;
   pthread_rwlock_init(&proc->lock, NULL);
@@ -319,6 +321,7 @@ init_first_proc(const char *root)
 static void
 init_vkernel(const char *root)
 {
+  init_vkern_shm();
   init_mm(&vkern_mm);
   init_page();
   init_special_regs();

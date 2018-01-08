@@ -1,18 +1,20 @@
 #include <cassert>
 #include <cstdlib>
+#include <boost/interprocess/managed_external_buffer.hpp>
 
-extern "C" {
 #if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
 #include <cstring>
 #endif
 
+#include "mm.hpp"
+extern "C" {
 #include "cross_platform.h"
 #include "common.h"
 #include "util/list.h"
-#include "mm.h"
 #include "vm.h"
 #include "noah.h"
+#include "mm.h"
 
 #include "linux/mman.h"
 
@@ -20,11 +22,14 @@ extern "C" {
 #include "x86/specialreg.h"
 }
 
+namespace bi = boost::interprocess;
+
 /* 
  * Manage kernel memory space allocated by kmap.
  * Some members related to user memory space such as start_brk are meaningless in vkern_mm.
  */
 struct mm vkern_mm;
+bi::managed_external_buffer *vkern_shm;
 
 extern "C" void init_mmap(struct mm *mm);
 
@@ -158,6 +163,17 @@ init_mm(struct mm *mm)
   INIT_LIST_HEAD(&mm->mm_regions);
   RB_INIT(&mm->mm_region_tree);
   pthread_rwlock_init(&mm->alloc_lock, NULL);
+}
+
+void
+init_vkern_shm()
+{
+  void *buf;
+  int err = platform_map_mem(&buf, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC);
+  if (err < 0) {
+    abort();
+  }
+  vkern_shm = new bi::managed_external_buffer(bi::create_only, buf, 0x1000000);
 }
 
 void *
