@@ -31,14 +31,33 @@ generic_to_page_prot(int prot, bool cow)
   return w_prot;
 }
 
+
 int
 platform_map_mem(void **ret, size_t size, int prot)
 {
-  *ret = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, generic_to_page_prot(prot, false));
-  if (*ret == NULL) {
-    return -native_to_linux_errno(_doserrno);
+  if (size == 0) {
+    return -LINUX_EINVAL;
   }
-  return size;
+  if (!(prot & PROT_READ)) {
+    return -LINUX_EINVAL;
+  }
+
+  int err;
+  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, generic_to_page_prot(prot, false),
+    static_cast<unsigned long>(size >> 32), static_cast<unsigned long>(size), NULL);
+  if (m == INVALID_HANDLE_VALUE) {
+    return -LINUX_ENOMEM;
+  }
+
+  *ret = MapViewOfFile(m, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  if (*ret == NULL) {
+    err = -native_to_linux_errno(errno);
+  } else {
+    err = size;
+  }
+
+  CloseHandle(m);
+  return err;
 }
 
 int
@@ -109,10 +128,7 @@ out_close_file:
 int
 platform_unmap_mem(void *mem, size_t size)
 {
-  // TODO: unmap of filemapped memory
-  if (!VirtualFree(mem, size, MEM_DECOMMIT)) {
-    return -native_to_linux_errno(_doserrno);
-  }
+  // TODO
   return 0;
 }
 
