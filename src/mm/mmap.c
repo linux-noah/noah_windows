@@ -64,7 +64,7 @@ do_munmap(gaddr_t gaddr, size_t size)
     list_del(&overlapping->list);
     RB_REMOVE(mm_region_tree, &proc->mm->mm_region_tree, overlapping);
     vm_munmap(overlapping->gaddr, overlapping->size);
-    platform_unmap_mem(overlapping->haddr, overlapping->size);
+    platform_unmap_mem(overlapping->haddr, overlapping->handle, overlapping->size);
     free(overlapping);
     if (next == &proc->mm->mm_regions)
       break;
@@ -107,23 +107,20 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
   }
 
   void *ptr;
+  platform_handle_t handle;
   int err;
   if (!(l_flags & LINUX_MAP_ANON)) {
     // TODO
     return -LINUX_EINVAL;
   } else {
-    if (l_flags & LINUX_MAP_PRIVATE) {
-      err = platform_map_mem(&ptr, len, n_prot);
-    } else {
-      err = platform_map_shared_mem(&ptr, len, n_prot);
-    }
+    err = platform_map_mem(&ptr, &handle, len, n_prot, (l_flags & LINUX_MAP_PRIVATE) != 0);
   }
   if (err < 0) {
     panic("mmap failed. addr :0x%llx, len: 0x%lux, prot: %d, l_flags: %d, fd: %d, offset: 0x%llx\n", addr, len, l_prot, l_flags, fd, offset);
   }
 
   do_munmap(addr, len);
-  record_region(proc->mm, ptr, addr, len, l_prot, l_flags, fd, offset);
+  record_region(proc->mm, handle, ptr, addr, len, l_prot, l_flags, fd, offset);
 
   vm_mmap(addr, len, linux_to_native_mprot(l_prot), ptr);
 

@@ -38,10 +38,16 @@ int
 load_elf_interp(const char *path, uint64_t load_addr)
 {
   char *data;
+  platform_handle_t data_handle;
   Elf64_Ehdr *h;
   uint64_t map_top = 0;
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT | MAP_FILE_PRIVATE;
+#else
+  const int platform_mflags = MAP_PRIVATE;
+#endif
 
-  int size = platform_alloc_filemapping((void **)&data, -1, PROT_READ | PROT_EXEC, false, 0, path);
+  int size = platform_alloc_filemapping((void **)&data, &data_handle, -1, PROT_READ | PROT_EXEC, platform_mflags, 0, path);
   if (size < 0) {
     fprintf(stderr, "load_elf_interp, could not open file: %s\n", path);
     abort();
@@ -88,7 +94,7 @@ load_elf_interp(const char *path, uint64_t load_addr)
   write_register(VMM_X64_RIP, load_addr + h->e_entry);
   proc->mm->start_brk = map_top;
 
-  platform_free_filemapping(data, size);
+  platform_free_filemapping(data, data_handle, size);
 
   return 0;
 }
@@ -387,6 +393,12 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
 {
   int err;
   char *data;
+  platform_handle_t data_handle;
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT | MAP_FILE_PRIVATE;
+#else
+  const int platform_mflags = MAP_PRIVATE;
+#endif
   
   // if ((err = do_access(elf_path, X_OK)) < 0) {
   //   return err;
@@ -409,7 +421,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   read(fd, data, size);
   */
   // Memory-mapped file
-  int size = platform_alloc_filemapping(&data, -1, PROT_READ | PROT_EXEC, false, 0, elf_path);
+  int size = platform_alloc_filemapping(&data, &data_handle, -1, PROT_READ | PROT_EXEC, platform_mflags, 0, elf_path);
   if (size < 0) {
     return size;
   }
@@ -438,7 +450,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
     return -LINUX_ENOEXEC;                  /* unsupported file type */
   }
 
-  platform_free_filemapping(data, size);
+  platform_free_filemapping(data, data_handle, size);
   proc->mm->current_brk = proc->mm->start_brk;
 
   return 0;

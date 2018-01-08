@@ -6,6 +6,7 @@ extern "C" {
 #include "cross_platform.h"
 #include "common.h"
 #include "noah.h"
+#include "mm.h"
 
   int
   native_to_linux_mprot(int win_mprot)

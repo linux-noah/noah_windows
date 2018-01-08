@@ -1,7 +1,9 @@
 #ifndef NOAH_MM_H
 #define NOAH_MM_H
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <pthread.h>
 #endif
 #include <stdbool.h>
@@ -12,10 +14,17 @@
 #include "util/list.h"
 #include "util/tree.h"
 
+#ifdef _WIN32
+typedef HANDLE platform_handle_t;
+#else
+typedef int platform_handle_t;
+#endif
+
 RB_HEAD(mm_region_tree, mm_region);
 
 struct mm_region {
   RB_ENTRY(mm_region) tree;
+  platform_handle_t handle;
   void *haddr;
   gaddr_t gaddr;
   size_t size;
@@ -43,13 +52,13 @@ void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
 
-gaddr_t kmap(void *ptr, size_t size, int flags);
+gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 
 RB_PROTOTYPE(mm_region_tree, mm_region, tree, mm_region_cmp);
 int region_compare(struct mm_region *r1, struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
 struct mm_region *find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
-struct mm_region *record_region(struct mm *mm, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
+struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
 void split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
 void destroy_mm(struct mm *mm);
 
@@ -59,10 +68,31 @@ gaddr_t do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, i
 int do_munmap(gaddr_t gaddr, size_t size);
 
 
-int platform_unmap_mem(void *mem, size_t size);
-int platform_map_mem(void **ret, size_t size, int prot);
-int platform_map_shared_mem(void **ret, size_t size, int prot);
-int platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path);
-int platform_free_filemapping(void *addr, size_t size);
+#ifdef _WIN32
+
+// Temporalily map constants from POSIX's to Windows's
+#define PROT_READ  GENERIC_READ 
+#define PROT_WRITE GENERIC_WRITE
+#define PROT_EXEC  GENERIC_EXECUTE
+
+#define MAP_INHERIT       1
+#define MAP_FILE_SHARED   2
+#define MAP_FILE_PRIVATE  4
+
+#endif
+
+/* platform_mflags flag is
+ * 1. In UNIX
+ *   native mflags
+ * 2. In Windows
+ *   a value that consists of the following bits
+ *     - MAP_INHERIT
+ *     - MAP_FILE_SHARED
+ *     - MAP_FILE_PRIVATE
+ */
+int platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, int platform_mflags);
+int platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, int prot, int platform_mflags, off_t offset, const char *path);
+int platform_unmap_mem(void *mem, platform_handle_t handle, size_t size);
+int platform_free_filemapping(void *addr, platform_handle_t handle, size_t size);
 
 #endif

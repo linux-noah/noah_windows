@@ -12,27 +12,18 @@
 
 
 int
-platform_map_mem(void **ret, size_t size, int prot)
+platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, int platform_mflags)
 {
-  *ret = mmap(0, size, prot, MAP_PRIVATE | MAP_ANON, -1, 0);
+  *ret = mmap(0, size, prot, platform_mflags, -1, 0);
   if (*ret == MAP_FAILED) {
     return -native_to_linux_errno(errno);
   }
+  *handle = -1;
   return size;
 }
 
 int
-platform_map_shared_mem(void **ret, size_t size, int prot)
-{
-  *ret = mmap(0, size, prot, MAP_SHARED, -1, 0);
-  if (*ret == MAP_FAILED) {
-    return -native_to_linux_errno(errno);
-  }
-  return size;
-}
-
-int
-platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back, off_t offset, const char *path)
+platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, int prot, int platform_mflags, off_t offset, const char *path)
 {
   // TODO: manage temporary FDs via vkern_open/close
   int fd;
@@ -47,18 +38,18 @@ platform_alloc_filemapping(void **ret, ssize_t size, int prot, bool writes_back,
     size = st.st_size;
   }
 
-  int flags = writes_back ? MAP_SHARED : MAP_PRIVATE;
-  *ret = mmap(0, size, prot, flags, fd, offset);
+  *ret = mmap(0, size, prot, platform_mflags, fd, offset);
   if (*ret == MAP_FAILED) {
     return -native_to_linux_errno(errno);
   }
   close(fd);
 
+  *handle = -1;
   return size;
 }
 
 int
-platform_unmap_mem(void *mem, size_t size)
+platform_unmap_mem(void *mem, platform_handle_t handle, size_t size)
 {
   int ret = munmap(mem, size);
   if (ret < 0) {
@@ -68,7 +59,7 @@ platform_unmap_mem(void *mem, size_t size)
 }
 
 int
-platform_free_filemapping(void *mem, size_t size)
+platform_free_filemapping(void *addr, platform_handle_t handle, size_t size)
 {
   return platform_unmap_mem(mem, size);
 }

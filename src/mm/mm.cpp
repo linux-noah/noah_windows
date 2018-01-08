@@ -30,13 +30,14 @@ namespace bi = boost::interprocess;
  */
 struct mm vkern_mm;
 bi::managed_external_buffer *vkern_shm;
+platform_handle_t vkern_shm_handle;
 
 extern "C" void init_mmap(struct mm *mm);
 
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 
 gaddr_t
-kmap(void *ptr, size_t size, int flags)
+kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
 {
   static uint64_t noah_kern_brk = 0x0000007fc0000000ULL; // user_addr_max, hard coding for a workaroud of MSVC's complaining
 
@@ -45,7 +46,7 @@ kmap(void *ptr, size_t size, int flags)
 
   pthread_rwlock_wrlock(&vkern_mm.alloc_lock);
 
-  record_region(&vkern_mm, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
+  record_region(&vkern_mm, handle, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
@@ -55,45 +56,66 @@ kmap(void *ptr, size_t size, int flags)
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) pe_t[NR_PAGE_ENTRY];
-pe_t pml4 = {PTE_U | PTE_W | PTE_P, 0};
+pe_t *pml4;
 gaddr_t pml4_ptr;
-pe_t pdp;
-
-void
-init_pdp()
-{
-  // Straight mapping
-  for (int i = 0; i < NR_PAGE_ENTRY; i++) {
-    pdp[i] = (0x40000000ULL * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
-  }
-
-  pdp[NR_PAGE_ENTRY - 1] &= ~PTE_U; // the region kmap manages
-}
+pe_t *pdp;
+gaddr_t pdp_ptr;
 
 void
 init_page()
 {
-  init_pdp();
-
-  pml4_ptr = kmap(pml4, 0x1000, PROT_READ | PROT_WRITE);
-  pml4[0] |= kmap(pdp, 0x1000, PROT_READ | PROT_WRITE) & 0x000ffffffffff000ul;
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT;
+#else
+  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
+#endif
+  int err;
+  platform_handle_t pml4_handle, pdp_handle;
+  err = platform_map_mem(reinterpret_cast<void **>(&pml4), &pml4_handle, sizeof(pe_t), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  err = platform_map_mem(reinterpret_cast<void **>(&pdp), &pdp_handle, sizeof(pe_t), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  pml4_ptr = kmap(pml4, pml4_handle, 0x1000, PROT_READ | PROT_WRITE);
+  pdp_ptr = kmap(pdp, pdp_handle, 0x1000, PROT_READ | PROT_WRITE);
+  
+  // Straight mapping
+  (*pml4)[0] = (pdp_ptr & 0x000ffffffffff000ul) | PTE_U | PTE_W | PTE_P;
+  for (int i = 0; i < NR_PAGE_ENTRY; i++) {
+    (*pdp)[i] = (0x40000000ULL * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
+  }
+  (*pdp)[NR_PAGE_ENTRY - 1] &= ~PTE_U; // the region that kmap manages
 
   write_register(VMM_X64_CR0, CR0_PG | CR0_PE | CR0_NE);
   write_register(VMM_X64_CR3, pml4_ptr);
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) gdt_t[3];
-gdt_t gdt = {
-  0,                  // NULL SEL
-  0x0020980000000000, // CODE SEL
-  0x0000900000000000, // DATA SEL
-};
+gdt_t *gdt;
 gaddr_t gdt_ptr;
 
 void
 init_segment()
 {
-  kmap(gdt, 0x1000, PROT_READ | PROT_WRITE);
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT;
+#else
+  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
+#endif
+  int err;
+  platform_handle_t handle;
+  err = platform_map_mem(reinterpret_cast<void **>(&gdt), &handle, sizeof(gdt_t), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  (*gdt)[SEG_NULL] = 0;
+  (*gdt)[SEG_CODE] = 0x0020980000000000;
+  (*gdt)[SEG_DATA] = 0x0000900000000000;
+
+  gdt_ptr = kmap(gdt, handle, 0x1000, PROT_READ | PROT_WRITE);
 
   write_register(VMM_X64_GDT_BASE, gdt_ptr);
   write_register(VMM_X64_GDT_LIMIT, 3 * 8 - 1);
@@ -168,8 +190,13 @@ init_mm(struct mm *mm)
 void
 init_vkern_shm()
 {
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT;
+#else
+  const int platform_mflags = MAP_SHARED | MAP_ANONYMOUS;
+#endif
   void *buf;
-  int err = platform_map_mem(&buf, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC);
+  int err = platform_map_mem(&buf, &vkern_shm_handle, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC, platform_mflags);
   if (err < 0) {
     abort();
   }
@@ -251,11 +278,12 @@ split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
 }
 
 struct mm_region*
-record_region(struct mm *mm, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff)
+record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff)
 {
   assert(gaddr != 0);
 
   struct mm_region *region = reinterpret_cast<struct mm_region *>(malloc(sizeof *region));
+  region->handle = handle;
   region->haddr = haddr;
   region->gaddr = gaddr;
   region->size = size;
@@ -289,7 +317,7 @@ destroy_mm(struct mm *mm)
   struct list_head *list, *t;
   list_for_each_safe (list, t, &mm->mm_regions) {
     struct mm_region *r = list_entry(list, struct mm_region, list);
-    platform_unmap_mem(r->haddr, r->size);
+    platform_unmap_mem(r->haddr, r->handle, r->size);
     vm_munmap(r->gaddr, r->size);
     free(r);
   }

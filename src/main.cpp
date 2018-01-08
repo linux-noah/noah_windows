@@ -229,18 +229,28 @@ init_special_regs()
 }
 
 TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];
-gate_desc_t idt;
+gate_desc_t *idt;
 gaddr_t idt_ptr;
 
 TYPEDEF_PAGE_ALIGNED(uint8_t) syscall_entry_t[1];
-syscall_entry_t syscall_entry;
+syscall_entry_t *syscall_entry;
 TYPEDEF_PAGE_ALIGNED(uint8_t) exception_entry_t[256];
-exception_entry_t exception_entry;
+exception_entry_t *exception_entry;
 
 void
 init_idt()
 {
-  idt_ptr = kmap(idt, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE);
+  platform_handle_t handle;
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT;
+#else
+  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
+#endif
+  int err = platform_map_mem(reinterpret_cast<void **>(&idt), &handle, sizeof(gate_desc_t), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  idt_ptr = kmap(idt, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE);
 
   write_register(VMM_X64_IDT_BASE, idt_ptr);
   write_register(VMM_X64_IDT_LIMIT, sizeof idt);
@@ -253,16 +263,25 @@ init_idt()
   efer |= EFER_SCE;
   write_register(VMM_X64_EFER, efer);
   write_msr(MSR_IA32_EFER, efer);
-  syscall_entry[0] = OP_HLT;
-  syscall_entry_addr = kmap(reinterpret_cast<void *>(syscall_entry), PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
+
+  err = platform_map_mem(reinterpret_cast<void **>(&syscall_entry), &handle, sizeof(syscall_entry_t), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  (*syscall_entry)[0] = OP_HLT;
+  syscall_entry_addr = kmap(syscall_entry, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
   write_msr(MSR_IA32_LSTAR, syscall_entry_addr);
   write_msr(MSR_IA32_FMASK, 0);
   write_msr(MSR_IA32_FMASK, 0);
   write_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
 
-  exception_entry_addr = kmap(reinterpret_cast<void *>(exception_entry), PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
+  err = platform_map_mem(reinterpret_cast<void **>(&exception_entry), &handle, sizeof(exception_entry), PROT_READ | PROT_WRITE, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  exception_entry_addr = kmap(exception_entry, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
   for (int i = 0; i < 256; i++) {
-    exception_entry[i] = OP_HLT;
+    (*exception_entry)[i] = OP_HLT;
     // Set idt[i] to there
   }
 #endif
