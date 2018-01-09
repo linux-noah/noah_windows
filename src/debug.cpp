@@ -12,13 +12,11 @@
 #include <execinfo.h>
 #endif
 
-extern "C" {
 #include "noah.h"
 #include "cross_platform.h"
 #include "vm.h"
 #include "linux/time.h"
 #include "linux/fs.h"
-}
 
 static FILE *printk_sink, *warnk_sink;
 pthread_mutex_t printk_sync = PTHREAD_MUTEX_INITIALIZER;

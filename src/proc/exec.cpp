@@ -18,7 +18,6 @@
 #define alloca _alloca
 #endif
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "vm.h"
@@ -31,7 +30,6 @@ extern "C" {
 #include "linux/misc.h"
 #include "linux/time.h"
 #include "linux/fs.h"
-}
 
 void init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf64_Ehdr *ehdr, uint64_t global_offset, uint64_t interp_base);
 

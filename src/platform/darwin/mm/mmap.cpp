@@ -6,11 +6,9 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
-extern "C" {
 #include "linux/errno.h"
 #include "linux/mman.h"
 #include "mm.h"
-}
 
 int
 platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, int platform_mflags)

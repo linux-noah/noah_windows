@@ -2,14 +2,11 @@
 #include <cstring>
 #include <cassert>
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "vm.h"
 #include "linux/errno.h"
-}
 
-extern "C" {
 DEFINE_SYSCALL(unimplemented)
 {
   uint64_t rax;
@@ -27,7 +24,6 @@ DEFINE_SYSCALL(unimplemented)
 SYSCALLS
 #undef SYSCALL
 #undef _sys_unimplemented
-}
 
 sc_handler_t sc_handler_table[NR_SYSCALLS] = {
 #define SYSCALL(n, name) (sc_handler_t) _sys_##name,

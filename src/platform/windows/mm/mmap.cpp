@@ -4,11 +4,9 @@
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
-extern "C" {
 #include "linux/errno.h"
 #include "linux/mman.h"
 #include "mm.h"
-}
 
 namespace bi = boost::interprocess;
 

@@ -29,7 +29,7 @@ include_directories(${BOOST_INCLUDEDIR})
 
 add_executable(noah
   src/main.cpp
-  src/vmm.c
+  src/vmm.cpp
   src/meta_strace.cpp
   src/base.cpp
   src/debug.cpp

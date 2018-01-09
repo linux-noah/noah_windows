@@ -1,5 +1,3 @@
-extern "C" {
-
 #include "common.h"
 #include "noah.h"
 
@@ -11,7 +9,6 @@ extern "C" {
 #include "linux/ioctl.h"
 #include "linux/termios.h"
 #include "linux/mman.h"
-}
 
 #include <cstddef>
 #include <cstdio>

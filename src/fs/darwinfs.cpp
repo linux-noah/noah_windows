@@ -1,4 +1,3 @@
-extern "C" {
 #include "common.h"
 #include "noah.h"
 
@@ -9,7 +8,6 @@ extern "C" {
 #include "linux/errno.h"
 #include "linux/ioctl.h"
 #include "fs.h"
-}
 
 #include <cstddef>
 #include <cstdio>

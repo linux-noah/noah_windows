@@ -28,7 +28,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "mm.h"
@@ -40,7 +39,6 @@ extern "C" {
 #include "linux/errno.h"
 #include "linux/ioctl.h"
 #include "fs.h"
-}
 
 #ifdef __APPLE__
 int
@@ -200,8 +198,6 @@ vkern_close(int fd)
 
 #endif
 
-extern "C" {
-
 DEFINE_SYSCALL(read, int, fd, gaddr_t, buf_ptr, size_t, size)
 {
   int r;
@@ -236,10 +232,6 @@ out:
   return r;
 }
 
-}
-
-extern "C" {
-
 DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
 {
   int r;
@@ -267,6 +259,4 @@ DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
 out:
   free(buf);
   return r;
-}
-
 }

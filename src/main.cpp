@@ -19,7 +19,6 @@
 #endif
 
 #include "mm.hpp"
-extern "C" {
 #include "cross_platform.h"
 #include "common.h"
 #include "noah.h"
@@ -30,7 +29,6 @@ extern "C" {
 #include "x86/irq_vectors.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
-}
 
 gaddr_t syscall_entry_addr;
 gaddr_t exception_entry_addr;

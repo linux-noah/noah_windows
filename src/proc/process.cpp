@@ -18,7 +18,6 @@
 #undef _GNU_SOURCE
 #endif
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "vm.h"
@@ -28,13 +27,10 @@ extern "C" {
 #include "linux/misc.h"
 #include "linux/errno.h"
 #include "linux/futex.h"
-}
 
 
 struct proc *proc;
 _Thread_local struct task task;
-
-extern "C" {
 
 DEFINE_SYSCALL(exit, int, reason)
 {
@@ -55,6 +51,4 @@ DEFINE_SYSCALL(exit, int, reason)
     pthread_rwlock_unlock(&proc->lock);
     pthread_exit(&reason);
   }
-}
-
 }

@@ -1,7 +1,7 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
 #include <vmm.h>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -123,7 +123,7 @@ create_vcpu()
 
   assert(vcpu == NULL);
 
-  vcpu = calloc(sizeof(struct vcpu), 1);
+  vcpu = reinterpret_cast<struct vcpu *>(calloc(sizeof(struct vcpu), 1));
   vcpu->vcpuid = vcpuid;
 
   pthread_rwlock_wrlock(&alloc_lock);
@@ -191,7 +191,7 @@ write_register(vmm_x64_reg_t reg, uint64_t val) {
 }
 
 void
-read_msr(vmm_x64_reg_t reg, uint64_t *val)
+read_msr(uint32_t reg, uint64_t *val)
 {
   if (vmm_cpu_get_msr(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
     fprintf(stderr, "read_msr failed\n");
@@ -200,7 +200,7 @@ read_msr(vmm_x64_reg_t reg, uint64_t *val)
 }
 
 void
-write_msr(vmm_x64_reg_t reg, uint64_t val) {
+write_msr(uint32_t reg, uint64_t val) {
   if (vmm_cpu_set_msr(vm, vcpu->vcpuid, reg, val) != VMM_SUCCESS) {
     fprintf(stderr, "write_msr failed\n");
     abort();

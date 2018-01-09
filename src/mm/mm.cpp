@@ -8,7 +8,6 @@
 #endif
 
 #include "mm.hpp"
-extern "C" {
 #include "cross_platform.h"
 #include "common.h"
 #include "util/list.h"
@@ -20,7 +19,6 @@ extern "C" {
 
 #include "x86/vm.h"
 #include "x86/specialreg.h"
-}
 
 namespace bi = boost::interprocess;
 
@@ -32,7 +30,7 @@ struct mm vkern_mm;
 bi::managed_external_buffer *vkern_shm;
 platform_handle_t vkern_shm_handle;
 
-extern "C" void init_mmap(struct mm *mm);
+void init_mmap(struct mm *mm);
 
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 

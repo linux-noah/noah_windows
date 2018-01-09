@@ -10,13 +10,11 @@
 #include <unistd.h>
 #endif
 
-extern "C" {
 #include "common.h"
 #include "cross_platform.h"
 #include "syscall.h"
 #include "noah.h"
 #include "mm.h"
-}
 
 static FILE *strace_sink;
 pthread_mutex_t strace_sync = PTHREAD_MUTEX_INITIALIZER;

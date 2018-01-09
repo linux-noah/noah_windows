@@ -14,7 +14,6 @@
 #endif
 #endif
 
-extern "C" {
 #include "common.h"
 
 #include "noah.h"
@@ -23,9 +22,8 @@ extern "C" {
 #include "x86/vm.h"
 
 #include "linux/mman.h"
-}
 
-extern "C" void
+void
 init_mmap(struct mm *mm)
 {
   mm->current_mmap_top = 0x00000000c0000000;

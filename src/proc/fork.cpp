@@ -9,7 +9,6 @@
 #include <cstring>
 #include <string>
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "syscall.h"
@@ -17,7 +16,6 @@ extern "C" {
 #include "linux/common.h"
 #include "linux/misc.h"
 #include "linux/signal.h"
-}
 
 int platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls);
 
@@ -57,8 +55,6 @@ do_clone(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gad
   }
 }
 
-extern "C" {
-
 DEFINE_SYSCALL(clone, unsigned long, clone_flags, unsigned long, newsp, gaddr_t, parent_tid, gaddr_t, child_tid, gaddr_t, tls)
 {
   return do_clone(clone_flags, newsp, parent_tid, child_tid, tls);
@@ -72,6 +68,4 @@ DEFINE_SYSCALL(fork)
 DEFINE_SYSCALL(vfork)
 {
   return do_clone(LINUX_SIGCHLD, 0, 0, 0, 0);
-}
-
 }

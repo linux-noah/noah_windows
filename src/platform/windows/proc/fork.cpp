@@ -5,11 +5,9 @@
 #include <string>
 #include <Windows.h>
 
-extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "syscall.h"
-}
 
 int
 platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls)

@@ -29,12 +29,19 @@
 #define MK_STRACE_CALL(t,v) #t, #v, temp__##v
 #define temp__0             0  // argument terminator
 
+// macros to put padding so that the number of arguments of _sys_foo becomes six
+#define _PAD_TO_6(...) _EXPAND_VA_ARGS(_DISPATCH(__VA_ARGS__,_PAD_N,,_PAD_N,,_PAD_N,,_PAD_N,,_PAD_N,,_PAD_N,,_PAD_N,_PAD_0)(__VA_ARGS__))
+// The case is divided into where the values is 0 and larger to trim trailing comma after __VA_ARGS__
+#define _PAD_0()       uint64_t, pad0, uint64_t, pad1, uint64_t, pad2, uint64_t, pad3, uint64_t, pad4, uint64_t, pad5
+#define _PAD_N(...)    _EXPAND_VA_ARGS(_TAKE_6(__VA_ARGS__, uint64_t, pad0, uint64_t, pad1, uint64_t, pad2, uint64_t, pad3, uint64_t, pad4, uint64_t, pad5))
+#define _TAKE_6(T0,V0,T1,V1,T2,V2,T3,V3,T4,V4,T5,V5,...) T0,V0,T1,V1,T2,V2,T3,V3,T4,V4,T5,V5
+
 
 #define DECLARE_SCFUNCT(name, ...)                      \
   uint64_t sys_##name(_EXPAND_VA_ARGS(_MAP(MK_DECL, __VA_ARGS__)));
 
 #define DEFINE_SCWRAPPER(name, ...)                                                \
-  uint64_t _sys_##name(_EXPAND_VA_ARGS(_MAP(MK_TEMP,__VA_ARGS__))) {                                 \
+  uint64_t _sys_##name(_EXPAND_VA_ARGS(_MAP(MK_TEMP,_PAD_TO_6(__VA_ARGS__)))) {                                 \
     /* TODO: Replace "##" with some non-GNU trick */ \
     /* meta_strace_pre(LSYS_##name, #name, _EXPAND_VA_ARGS(_MAP(MK_STRACE_CALL, ##__VA_ARGS__, 0, 0))); */    \
     uint64_t ret = sys_##name(_EXPAND_VA_ARGS(_MAP(MK_CAST,__VA_ARGS__)));                         \
