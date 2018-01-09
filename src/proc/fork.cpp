@@ -24,7 +24,11 @@ int platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr
 int
 __do_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls)
 {
+#ifdef _WIN32
   return platform_clone_process(clone_flags, newsp, parent_tid, child_tid, tls);
+#else
+  return -LINUX_EINVAL;
+#endif
 }
 
 int

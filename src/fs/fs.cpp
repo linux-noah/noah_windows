@@ -67,27 +67,30 @@ resolve_path(const struct dir *parent, const char *name, int flags, struct path 
   }
 
   /* resolve symlinks */
-  char *sp = path->subpath;
-  *sp = 0;
-  const char *c = name;
-  assert(*c);
-  while (*c) {
-    while (*c && *c != '/') {
-      *sp++ = *c++;
-    }
+  /* FIXME: Temporary putting this codes inside a block since ``goto out`` crosses declarations */
+  {
+    char *sp = path->subpath;
     *sp = 0;
-    if ((flags & LOOKUP_NOFOLLOW) == 0) {
-      // TODO: resolve symlinks
+    const char *c = name;
+    assert(*c);
+    while (*c) {
+      while (*c && *c != '/') {
+        *sp++ = *c++;
+      }
+      *sp = 0;
+      if ((flags & LOOKUP_NOFOLLOW) == 0) {
+        // TODO: resolve symlinks
+      }
+      if (*c) {
+        *sp++ = *c++;
+      }
+      *sp = 0;
     }
-    if (*c) {
-      *sp++ = *c++;
-    }
-    *sp = 0;
   }
 
  out:
   path->fs = fs;
-  path->dir = malloc(sizeof(struct dir));
+  path->dir = reinterpret_cast<struct dir *>(malloc(sizeof(struct dir)));
   path->dir->fd = dir.fd;
   return 0;
 }

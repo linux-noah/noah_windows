@@ -86,8 +86,8 @@ struct l_rlimit {
 
 PACK(
 struct l_rusage {
-  l_timeval	ru_utime;
-  l_timeval	ru_stime;
+  struct l_timeval	ru_utime;
+  struct l_timeval	ru_stime;
   l_long	ru_maxrss;
   l_long	ru_ixrss;
   l_long	ru_idrss;
