@@ -1,3 +1,4 @@
+extern "C" {
 #include "common.h"
 #include "noah.h"
 
@@ -8,7 +9,15 @@
 #include "linux/errno.h"
 #include "linux/ioctl.h"
 #include "fs.h"
+}
 
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdbool>
+#include <cstring>
+#include <cassert>
+#include <cerrno>
 #include <unistd.h>
 #include <sys/uio.h>
 #include <sys/syscall.h>
@@ -20,14 +29,6 @@
 #include <sys/ioctl.h>
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
-
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>

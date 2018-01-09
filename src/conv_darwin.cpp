@@ -1,3 +1,5 @@
+extern "C" {
+
 #include "common.h"
 #include "noah.h"
 
@@ -9,10 +11,17 @@
 #include "linux/ioctl.h"
 #include "linux/termios.h"
 #include "linux/mman.h"
+}
 
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cerrno>
+#include <csignal>
 #include <unistd.h>
 #include <termios.h>
-#include <unistd.h>
 #include <sys/uio.h>
 #include <sys/syscall.h>
 #include <sys/select.h>
@@ -25,16 +34,9 @@
 #include <sys/syslimits.h>
 
 #include <sys/stat.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <signal.h>
 
 int
 linux_to_native_errno(int linux_errno)

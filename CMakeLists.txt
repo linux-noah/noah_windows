@@ -48,9 +48,9 @@ target_sources(noah PUBLIC
 )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(noah PUBLIC
-  src/conv_darwin.c 
-  src/fs/darwinfs.c
-  src/platform/darwin/mm/mmap.c
+  src/conv_darwin.cpp
+  src/fs/darwinfs.cpp
+  src/platform/darwin/mm/mmap.cpp
 )
 endif()
 
