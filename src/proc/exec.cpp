@@ -1,10 +1,8 @@
-#include "common.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cctype>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -20,6 +18,8 @@
 #define alloca _alloca
 #endif
 
+extern "C" {
+#include "common.h"
 #include "noah.h"
 #include "vm.h"
 #include "mm.h"
@@ -31,6 +31,7 @@
 #include "linux/misc.h"
 #include "linux/time.h"
 #include "linux/fs.h"
+}
 
 void init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf64_Ehdr *ehdr, uint64_t global_offset, uint64_t interp_base);
 
@@ -168,7 +169,7 @@ load_elf(Elf64_Ehdr *ehdr, int argc, char *argv[], char **envp)
     }
   }
   if (interp) {
-    char *interp_path = alloca(p[i].p_filesz + 1);
+    char *interp_path = (char *)alloca(p[i].p_filesz + 1);
     memcpy(interp_path, (char *)ehdr + p[i].p_offset, p[i].p_filesz);
     interp_path[p[i].p_filesz] = 0;
 
@@ -227,11 +228,11 @@ load_script(const char *script, size_t len, const char *elf_path, int argc, char
   }
 
   int newargc = sb_argc + argc;
-  char **newargv = alloca(newargc);
+  char **newargv = (char **)alloca(newargc);
   for (int i = 0; i < sb_argc; ++i) {
     newargv[i] = sb_argv[i];
   }
-  newargv[sb_argc] = elf_path;
+  newargv[sb_argc] = (char *)elf_path;
   memcpy(newargv + sb_argc + 1, argv + 1, (argc - 1) * sizeof(char *));
 
   do_exec(newargv[0], newargc, newargv, envp);
@@ -284,7 +285,7 @@ init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf
     total += strlen(*e) + 1;
   }
 
-  char *buf = alloca(total);
+  char *buf = (char *)alloca(total);
 
   uint64_t off = 0;
 
@@ -421,7 +422,7 @@ do_exec(const char *elf_path, int argc, char *argv[], char **envp)
   read(fd, data, size);
   */
   // Memory-mapped file
-  int size = platform_alloc_filemapping(&data, &data_handle, -1, PROT_READ | PROT_EXEC, platform_mflags, 0, elf_path);
+  int size = platform_alloc_filemapping((void **)&data, &data_handle, -1, PROT_READ | PROT_EXEC, platform_mflags, 0, elf_path);
   if (size < 0) {
     return size;
   }

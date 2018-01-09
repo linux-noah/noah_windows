@@ -5,7 +5,6 @@
 
 #include "types.h"
 #include "noah.h"
-#include "x86/vmx.h"
 
 void create_vm(void);
 void destroy_vm(void);

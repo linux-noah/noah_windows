@@ -1,19 +1,22 @@
-#include <stdarg.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <stdlib.h>
+#include <cstdarg>
+#include <cstdint>
+#include <cstring>
+#include <cstdio>
+#include <cctype>
+#include <cstdlib>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <pthread.h>
 #include <unistd.h>
 #endif
 
+extern "C" {
 #include "common.h"
 #include "cross_platform.h"
 #include "syscall.h"
 #include "noah.h"
+#include "mm.h"
+}
 
 static FILE *strace_sink;
 pthread_mutex_t strace_sync = PTHREAD_MUTEX_INITIALIZER;
@@ -26,8 +29,10 @@ init_meta_strace(const char *path)
 
 typedef void meta_strace_hook(int syscall_num, int argc, char *argnames[6], char *typenames[6], uint64_t vals[6], uint64_t ret);
 
-meta_strace_hook *strace_pre_hooks[NR_SYSCALLS];
-meta_strace_hook *strace_post_hooks[NR_SYSCALLS];
+namespace {
+  extern meta_strace_hook *strace_pre_hooks[NR_SYSCALLS];
+  extern meta_strace_hook *strace_post_hooks[NR_SYSCALLS];
+}
 
 void
 print_gstr(gstr_t str, int maxlen)
@@ -187,19 +192,20 @@ meta_strace_post(int syscall_num, char *syscall_name, uint64_t ret, ...)
 }
 
 
-meta_strace_hook *strace_pre_hooks[NR_SYSCALLS] = {
-//  [LSYS_read] = trace_read_pre,
-//  [LSYS_recvfrom] = trace_recvfrom_pre,
-//  [LSYS_write] = trace_write_pre,
-//  [LSYS_sendto] = trace_sendto_pre,
-//  [LSYS_execve] = trace_execve_pre,
-//  [LSYS_rt_sigprocmask] = trace_rt_sigprocmask_post,
-  NULL
-};
-meta_strace_hook *strace_post_hooks[NR_SYSCALLS] = {
-//  [LSYS_read] = trace_read_post,
-//  [LSYS_recvfrom] = trace_recvfrom_post,
-//  [LSYS_rt_sigprocmask] = trace_rt_sigprocmask_pre,
-  NULL
-};
-
+namespace {
+  meta_strace_hook *strace_pre_hooks[NR_SYSCALLS] = {
+    //  [LSYS_read] = trace_read_pre,
+    //  [LSYS_recvfrom] = trace_recvfrom_pre,
+    //  [LSYS_write] = trace_write_pre,
+    //  [LSYS_sendto] = trace_sendto_pre,
+    //  [LSYS_execve] = trace_execve_pre,
+    //  [LSYS_rt_sigprocmask] = trace_rt_sigprocmask_post,
+      NULL
+  };
+  meta_strace_hook *strace_post_hooks[NR_SYSCALLS] = {
+    //  [LSYS_read] = trace_read_post,
+    //  [LSYS_recvfrom] = trace_recvfrom_post,
+    //  [LSYS_rt_sigprocmask] = trace_rt_sigprocmask_pre,
+      NULL
+  };
+}

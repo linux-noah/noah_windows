@@ -1,11 +1,11 @@
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
+#include <cassert>
 #include <fcntl.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <assert.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
@@ -18,6 +18,7 @@
 #undef _GNU_SOURCE
 #endif
 
+extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "vm.h"
@@ -27,11 +28,13 @@
 #include "linux/misc.h"
 #include "linux/errno.h"
 #include "linux/futex.h"
-
+}
 
 
 struct proc *proc;
 _Thread_local struct task task;
+
+extern "C" {
 
 DEFINE_SYSCALL(exit, int, reason)
 {
@@ -45,10 +48,13 @@ DEFINE_SYSCALL(exit, int, reason)
   pthread_rwlock_wrlock(&proc->lock);
   if (proc->nr_tasks == 1) {
     _exit(reason);
-  } else {
+  }
+  else {
     proc->nr_tasks--;
     list_del(&task.head);
     pthread_rwlock_unlock(&proc->lock);
     pthread_exit(&reason);
   }
+}
+
 }

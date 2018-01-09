@@ -1,17 +1,8 @@
-#include "common.h"
-
-#include "noah.h"
-#include "vm.h"
-#include "mm.h"
-#include "x86/vm.h"
-
-#include "linux/mman.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include <errno.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <cstring>
+#include <cerrno>
 #include <fcntl.h>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -23,8 +14,18 @@
 #endif
 #endif
 
+extern "C" {
+#include "common.h"
 
-void
+#include "noah.h"
+#include "vm.h"
+#include "mm.h"
+#include "x86/vm.h"
+
+#include "linux/mman.h"
+}
+
+extern "C" void
 init_mmap(struct mm *mm)
 {
   mm->current_mmap_top = 0x00000000c0000000;
@@ -51,7 +52,9 @@ do_munmap(gaddr_t gaddr, size_t size)
     return -LINUX_ENOMEM;
   }
 
-  struct mm_region key = {.gaddr = gaddr, .size = size};
+  struct mm_region key;
+  key.gaddr = gaddr;
+  key.size = size;
   while (region_compare(&key, overlapping) == 0) {
     if (overlapping->gaddr < gaddr) {
       split_region(proc->mm, overlapping, gaddr);

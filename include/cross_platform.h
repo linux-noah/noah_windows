@@ -7,6 +7,9 @@
 
 #include <windows.h>
 #include <Windows.h>
+#include <process.h>
+
+// Cross-platform macros
 
 #define ATTR_CHECK_FORMAT(...)
 #define noreturn __declspec(noreturn)
@@ -14,12 +17,14 @@
 
 #define PACK(declare) __pragma( pack(push, 1) ) declare __pragma( pack(pop) )
 
-#define ssize_t int64_t
-
 #define _Thread_local
 
 noreturn static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
+
+// Types
+
+typedef int64_t ssize_t;
 
 // Temporary stubs for pthread
 
@@ -37,7 +42,9 @@ noreturn static void _f_noreturn() {};
 #define pthread_rwlock_init(...)
 #define pthread_exit(...)
 
+// POSIX compatiblity functions
 
+#define getpid() _getpid()
 
 #else
 

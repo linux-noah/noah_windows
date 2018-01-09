@@ -30,15 +30,15 @@ include_directories(${BOOST_INCLUDEDIR})
 add_executable(noah
   src/main.cpp
   src/vmm.c
-  src/meta_strace.c
+  src/meta_strace.cpp
   src/base.cpp
-  src/debug.c
-  src/proc/exec.c
-  src/proc/process.c
+  src/debug.cpp
+  src/proc/exec.cpp
+  src/proc/process.cpp
   src/proc/fork.cpp
-  src/fs/fs.c
+  src/fs/fs.cpp
   src/mm/mm.cpp
-  src/mm/mmap.c
+  src/mm/mmap.cpp
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC

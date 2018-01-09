@@ -1,15 +1,3 @@
-
-#include "common.h"
-#include "noah.h"
-
-#include "linux/common.h"
-#include "linux/time.h"
-#include "linux/fs.h"
-#include "linux/misc.h"
-#include "linux/errno.h"
-#include "linux/ioctl.h"
-#include "fs.h"
-
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <sys/uio.h>
@@ -29,16 +17,30 @@
 #include <io.h>
 #endif
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <assert.h>
-#include <errno.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdbool>
+#include <cstring>
+#include <cassert>
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+extern "C" {
+#include "common.h"
+#include "noah.h"
+#include "mm.h"
+
+#include "linux/common.h"
+#include "linux/time.h"
+#include "linux/fs.h"
+#include "linux/misc.h"
+#include "linux/errno.h"
+#include "linux/ioctl.h"
+#include "fs.h"
+}
 
 #ifdef __APPLE__
 int
@@ -195,10 +197,12 @@ vkern_close(int fd)
 
 #endif
 
+extern "C" {
+
 DEFINE_SYSCALL(read, int, fd, gaddr_t, buf_ptr, size_t, size)
 {
   int r;
-  char *buf = malloc(size);
+  char *buf = reinterpret_cast<char *>(malloc(size));
   /*
   struct file *file = get_file(fd);
   if (file == NULL) {
@@ -229,10 +233,14 @@ out:
   return r;
 }
 
+}
+
+extern "C" {
+
 DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
 {
   int r;
-  char *buf = malloc(size);
+  char *buf = reinterpret_cast<char *>(malloc(size));
   if (copy_from_user(buf, buf_ptr, size)) {
     r = -LINUX_EFAULT;
     goto out;
@@ -256,4 +264,6 @@ DEFINE_SYSCALL(write, int, fd, gaddr_t, buf_ptr, size_t, size)
 out:
   free(buf);
   return r;
+}
+
 }

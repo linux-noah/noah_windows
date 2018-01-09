@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 2016 Yuichi Nishiwaki, Takaya Saeki
+ * Copyright (c) 2016-2017 Takaya Saeki
+ * Copyright (c) 2016 Yuichi Nishiwaki
  * Copyright (c) 2015 Dmitry Chagin
  * Copyright (c) 2013 Dmitry Chagin
  * Copyright (c) 2002 Doug Rabson
@@ -36,11 +37,7 @@
 #define	_AMD64_LINUX_H_
 
 #include "cross_platform.h"
-
-typedef struct {
-  l_time_t	tv_sec;
-  l_suseconds_t	tv_usec;
-} l_timeval;
+#include "linux/time.h" // TODO: Remove this if there is a better way to use struct l_timeval.
 
 /*
  * Miscellaneous
