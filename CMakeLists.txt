@@ -44,6 +44,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 target_sources(noah PUBLIC
   src/conv_windows.cpp 
   src/platform/windows/mm/mmap.cpp
+  src/platform/windows/proc/fork.cpp
 )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(noah PUBLIC
