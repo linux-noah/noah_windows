@@ -29,7 +29,7 @@ int do_exec(const char *elf_path, int argc, char *argv[], char **envp);
 //int vkern_close(int fd);
 gaddr_t alloc_region(size_t len);
 
-noreturn void die_with_forcedsig(int sig);
+[[ noreturn ]] void die_with_forcedsig(int sig);
 void main_loop(int return_on_sigret);
 
 /* signal */

@@ -7,7 +7,6 @@
 #include <cstring>
 #endif
 
-#include "mm.hpp"
 #include "cross_platform.h"
 #include "common.h"
 #include "util/list.h"

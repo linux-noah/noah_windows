@@ -10,7 +10,7 @@ void init_meta_strace(const char *fn);
 
 void printk(const char *fmt, ...) ATTR_CHECK_FORMAT(printf, 1, 2);
 void warnk(const char *fmt, ...) ATTR_CHECK_FORMAT(printf, 1, 2);
-noreturn void panic(const char *fmt, ...) ATTR_CHECK_FORMAT(printf, 1, 2);
+[[ noreturn ]] void panic(const char *fmt, ...) ATTR_CHECK_FORMAT(printf, 1, 2);
 void print_regs(void);
 void dump_instr(void);
 void meta_strace_pre(int syscall_num, char *syscall_name, ...);

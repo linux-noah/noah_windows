@@ -6,7 +6,8 @@
 #else
 #include <pthread.h>
 #endif
-#include <stdbool.h>
+#include <cstdbool>
+#include <boost/interprocess/managed_external_buffer.hpp>
 
 #include "cross_platform.h"
 #include "types.h"
@@ -63,6 +64,9 @@ struct mm {
 extern const gaddr_t user_addr_max;
 
 extern struct mm vkern_mm;
+extern boost::interprocess::managed_external_buffer *vkern_shm;
+
+void init_vkern_shm();
 
 void init_page();
 void init_segment();

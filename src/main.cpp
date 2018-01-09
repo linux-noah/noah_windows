@@ -18,7 +18,6 @@
 #endif
 #endif
 
-#include "mm.hpp"
 #include "cross_platform.h"
 #include "common.h"
 #include "noah.h"
@@ -377,7 +376,7 @@ elevate_privilege(void)
 #endif
 }
 
-noreturn void
+[[ noreturn ]] void
 die_with_forcedsig(int sig)
 {
   // TODO

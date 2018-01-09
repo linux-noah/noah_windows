@@ -8,7 +8,6 @@
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #include <pthread.h>
-#include <stdnoreturn.h>
 #include <execinfo.h>
 #endif
 
@@ -168,7 +167,7 @@ printbt_to_sink(FILE *sink, pthread_mutex_t *sync)
 #endif
 }
 
-noreturn void
+[[ noreturn ]] void
 panic(const char *fmt, ...)
 {
   int err = errno;

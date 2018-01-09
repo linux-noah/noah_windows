@@ -12,14 +12,13 @@
 // Cross-platform macros
 
 #define ATTR_CHECK_FORMAT(...)
-#define noreturn __declspec(noreturn)
 #define TYPEDEF_PAGE_ALIGNED(t) typedef t __declspec(align(0x1000)) 
 
 #define PACK(declare) __pragma( pack(push, 1) ) declare __pragma( pack(pop) )
 
 #define _Thread_local
 
-noreturn static void _f_noreturn() {};
+[[ noreturn ]] static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
 
 // Types
