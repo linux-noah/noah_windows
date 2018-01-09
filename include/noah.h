@@ -21,20 +21,6 @@
 void drop_privilege(void);
 void elevate_privilege(void);
 
-/* interface to user memory */
-
-void *guest_to_host(gaddr_t);
-
-#define VERIFY_READ  LINUX_PROT_READ
-#define VERIFY_WRITE LINUX_PROT_WRITE
-#define VERIFY_EXEC  LINUX_PROT_EXEC
-bool addr_ok(gaddr_t, int verify);
-
-size_t copy_from_user(void *haddr, gaddr_t gaddr, size_t n); /* returns 0 on success */
-ssize_t strncpy_from_user(void *haddr, gaddr_t gaddr, size_t n);
-size_t copy_to_user(gaddr_t gaddr, const void *haddr, size_t n);
-ssize_t strnlen_user(gaddr_t gaddr, size_t n);
-
 /* linux emulation */
 
 int do_exec(const char *elf_path, int argc, char *argv[], char **envp);

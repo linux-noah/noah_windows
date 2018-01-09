@@ -12,23 +12,36 @@ extern "C" {
 
 namespace bi = boost::interprocess;
 
-int
-generic_to_page_prot(int prot, bool cow)
+static inline int
+prot_to_page_access(int prot, bool cow)
 {
-  int w_prot;
+  int page_acc;
   if (prot & PROT_WRITE) {
     if (cow) {
-      w_prot = PAGE_WRITECOPY;
+      page_acc = PAGE_WRITECOPY;
     } else {
-      w_prot = PAGE_READWRITE;
+      page_acc = PAGE_READWRITE;
     }
   } else {
-    w_prot = PAGE_READONLY;
+    page_acc = PAGE_READONLY;
   }
   if (prot & PROT_EXEC) {
-    w_prot <<= 4;
+    page_acc <<= 4;
   }
-  return w_prot;
+  return page_acc;
+}
+
+static inline int
+prot_to_generic_access(int prot)
+{
+  int gen_acc = 0;
+  if (prot & PROT_READ)
+    gen_acc |= GENERIC_READ;
+  if (prot & PROT_WRITE)
+    gen_acc |= GENERIC_WRITE;
+  if (prot & PROT_EXEC)
+    gen_acc |= GENERIC_EXECUTE;
+  return gen_acc;
 }
 
 
@@ -47,7 +60,7 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   sec.lpSecurityDescriptor = NULL;
   sec.bInheritHandle = (platform_mflags & MAP_INHERIT) != 0;
   int err;
-  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, generic_to_page_prot(prot, false),
+  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, prot_to_page_access(prot, false),
     static_cast<unsigned long>(size >> 32), static_cast<unsigned long>(size), NULL);
   if (m == INVALID_HANDLE_VALUE) {
     return -LINUX_ENOMEM;
@@ -84,7 +97,7 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
   sec.lpSecurityDescriptor = NULL;
   sec.bInheritHandle = (platform_mflags & MAP_INHERIT) != 0;
   int err;
-  HANDLE f = CreateFile(path, prot, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+  HANDLE f = CreateFile(path, prot_to_generic_access(prot), FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     NULL, OPEN_EXISTING, FILE_FLAG_POSIX_SEMANTICS, &sec);
   if (f == INVALID_HANDLE_VALUE) {
     err = -native_to_linux_errno(_doserrno);
@@ -100,7 +113,7 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
     }
     size = (size_high << 32) | size_low;
   }
-  HANDLE m = CreateFileMapping(f, NULL, generic_to_page_prot(prot, (platform_mflags & MAP_FILE_SHARED) != 0), size_high, size_low, NULL);
+  HANDLE m = CreateFileMapping(f, NULL, prot_to_page_access(prot, (platform_mflags & MAP_FILE_SHARED) != 0), size_high, size_low, NULL);
   if (m == INVALID_HANDLE_VALUE) {
     goto out_close_file;
   }

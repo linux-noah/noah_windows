@@ -20,6 +20,22 @@ typedef HANDLE platform_handle_t;
 typedef int platform_handle_t;
 #endif
 
+/* interface to user memory */
+
+void *guest_to_host(gaddr_t);
+
+#define VERIFY_READ  LINUX_PROT_READ
+#define VERIFY_WRITE LINUX_PROT_WRITE
+#define VERIFY_EXEC  LINUX_PROT_EXEC
+bool addr_ok(gaddr_t, int verify);
+
+size_t copy_from_user(void *haddr, gaddr_t gaddr, size_t n); /* returns 0 on success */
+ssize_t strncpy_from_user(void *haddr, gaddr_t gaddr, size_t n);
+size_t copy_to_user(gaddr_t gaddr, const void *haddr, size_t n);
+ssize_t strnlen_user(gaddr_t gaddr, size_t n);
+
+/* memory related structures */
+
 RB_HEAD(mm_region_tree, mm_region);
 
 struct mm_region {
@@ -71,9 +87,12 @@ int do_munmap(gaddr_t gaddr, size_t size);
 #ifdef _WIN32
 
 // Temporalily map constants from POSIX's to Windows's
-#define PROT_READ  GENERIC_READ 
-#define PROT_WRITE GENERIC_WRITE
-#define PROT_EXEC  GENERIC_EXECUTE
+#ifndef PROT_READ  // libhypervisor could define PROT_READ as the same values
+#define PROT_READ  0x1
+#define PROT_WRITE 0x2
+#define PROT_EXEC  0x4
+#define PROT_NONE  0x0
+#endif
 
 #define MAP_INHERIT       1
 #define MAP_FILE_SHARED   2
