@@ -1,14 +1,15 @@
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+
+extern "C" {
 #include "common.h"
 #include "noah.h"
 #include "vm.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
 #include "linux/errno.h"
+}
 
-
+extern "C" {
 DEFINE_SYSCALL(unimplemented)
 {
   uint64_t rax;
@@ -21,20 +22,21 @@ DEFINE_SYSCALL(unimplemented)
 
 #include "syscall.h"
 
-#define sys_unimplemented __ignore_me__
+#define _sys_unimplemented __ignore_me__
 #define SYSCALL(n, name) uint64_t _sys_##name(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 SYSCALLS
 #undef SYSCALL
-#undef sys_unimplemented
+#undef _sys_unimplemented
+}
 
 sc_handler_t sc_handler_table[NR_SYSCALLS] = {
-#define SYSCALL(n, name) [n] = ((sc_handler_t) _sys_##name),
+#define SYSCALL(n, name) (sc_handler_t) _sys_##name,
   SYSCALLS
 #undef SYSCALL
 };
 
 char *sc_name_table[NR_SYSCALLS] = {
-#define SYSCALL(n, name) [n] = #name,
+#define SYSCALL(n, name) #name,
   SYSCALLS
 #undef SYSCALL
 };

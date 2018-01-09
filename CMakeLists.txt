@@ -31,7 +31,7 @@ add_executable(noah
   src/main.cpp
   src/vmm.c
   src/meta_strace.c
-  src/base.c
+  src/base.cpp
   src/debug.c
   src/proc/exec.c
   src/proc/process.c
