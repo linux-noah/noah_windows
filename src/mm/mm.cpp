@@ -203,7 +203,7 @@ init_vkern_shm()
 void *
 guest_to_host(gaddr_t gaddr)
 {
-  struct mm_region *region = find_region(gaddr, proc->mm);
+  struct mm_region *region = find_region(gaddr, proc->mm.get());
   if (!region) {
     region = find_region(gaddr, &vkern_mm);
   }
@@ -327,7 +327,7 @@ addr_ok(gaddr_t addr, int access)
   if (addr >= user_addr_max) {
     return false;
   }
-  struct mm_region *region = find_region(addr, proc->mm);
+  struct mm_region *region = find_region(addr, proc->mm.get());
   if (!region) {
     return false;
   }

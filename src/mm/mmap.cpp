@@ -45,7 +45,7 @@ do_munmap(gaddr_t gaddr, size_t size)
   }
   size = roundup(size, PAGE_SIZE(PAGE_4KB)); // Linux kernel also does this
 
-  struct mm_region *overlapping = find_region_range(gaddr, size, proc->mm);
+  struct mm_region *overlapping = find_region_range(gaddr, size, proc->mm.get());
   if (overlapping == NULL) {
     return -LINUX_ENOMEM;
   }
@@ -55,11 +55,11 @@ do_munmap(gaddr_t gaddr, size_t size)
   key.size = size;
   while (region_compare(&key, overlapping) == 0) {
     if (overlapping->gaddr < gaddr) {
-      split_region(proc->mm, overlapping, gaddr);
+      split_region(proc->mm.get(), overlapping, gaddr);
       overlapping = list_entry(overlapping->list.next, struct mm_region, list);
     }
     if (overlapping->gaddr + overlapping->size > gaddr + size) {
-      split_region(proc->mm, overlapping, gaddr + size);
+      split_region(proc->mm.get(), overlapping, gaddr + size);
     }
     struct list_head *next = overlapping->list.next;
     list_del(&overlapping->list);
@@ -121,7 +121,7 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
   }
 
   do_munmap(addr, len);
-  record_region(proc->mm, handle, ptr, addr, len, l_prot, l_flags, fd, offset);
+  record_region(proc->mm.get(), handle, ptr, addr, len, l_prot, l_flags, fd, offset);
 
   vm_mmap(addr, len, linux_to_native_mprot(l_prot), ptr);
 

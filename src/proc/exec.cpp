@@ -375,8 +375,8 @@ prepare_newproc(void)
   /* Reinitialize proc and task structures */
   /* Not handling locks seriously now because multi-thread execve is not implemented yet */
   proc->nr_tasks = 1;
-  destroy_mm(proc->mm); // munlock is also done by unmapping mm
-  init_mm(proc->mm);
+  destroy_mm(proc->mm.get()); // munlock is also done by unmapping mm
+  init_mm(proc->mm.get());
   init_reg_state();
   // reset_signal_state();
   // TODO: destroy LDT if it is implemented

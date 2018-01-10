@@ -306,10 +306,10 @@ init_first_proc(const char *root)
   memset(proc, 0, sizeof(proc));
   proc->nr_tasks = 1;
   pthread_rwlock_init(&proc->lock, NULL);
-  proc->mm = reinterpret_cast<struct mm *>(malloc(sizeof(struct mm)));
+  proc->mm = vkern_shm->construct<struct mm>("mm", std::nothrow)();
   INIT_LIST_HEAD(&proc->tasks);
   list_add(&task.head, &proc->tasks);
-  init_mm(proc->mm);
+  init_mm(proc->mm.get());
   // init_signal();
   /*
   int rootfd = open(root, O_RDONLY | O_DIRECTORY);

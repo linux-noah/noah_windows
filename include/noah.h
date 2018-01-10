@@ -4,7 +4,8 @@
 #ifndef _WIN32
 #include <pthread.h>
 #endif
-#include <stdint.h>
+#include <cstdint>
+#include <boost/interprocess/offset_ptr.hpp>
 
 #include "cross_platform.h"
 #include "types.h"
@@ -15,6 +16,8 @@
 #include "linux/mman.h"
 #include "linux/ipc.h"
 #include "version.h"
+
+using boost::interprocess::offset_ptr;
 
 /* privilege management */
 
@@ -97,7 +100,7 @@ struct proc {
   struct list_head tasks;
   pthread_rwlock_t lock;
   struct cred cred;
-  struct mm *mm;
+  offset_ptr<struct mm> mm;
   struct {
     pthread_rwlock_t sig_lock;
     // l_sigaction_t sigaction[LINUX_NSIG];
