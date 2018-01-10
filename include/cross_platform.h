@@ -18,7 +18,7 @@
 
 #define _Thread_local
 
-[[ noreturn ]] static void _f_noreturn() {};
+[[noreturn]] static void _f_noreturn() {};
 #define UNREACHABLE() _f_noreturn()
 
 // Types
@@ -51,7 +51,6 @@ typedef int64_t ssize_t;
 #define ATTR_CHECK_FORMAT(format_func, ...) __attribute__((format(format_func, __VA_ARGS__)))
 
 
-#include <stdnoreturn.h>
 #include <pthread.h>
 
 #define PACK(declare) declare __attribute__((__packed__))

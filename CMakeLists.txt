@@ -8,9 +8,9 @@ configure_file(bin/noah.in ${PROJECT_SOURCE_DIR}/bin/noah @ONLY)
 configure_file(include/version.h.in ${PROJECT_SOURCE_DIR}/include/version.h)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-parameter -std=gnu11")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -std=gnu++14")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O1 -g -fno-omit-frame-pointer -fsanitize=address -fno-optimize-sibling-calls")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 endif()
 
 set(Boost_USE_MULTITHREADED ON)
