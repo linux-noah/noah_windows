@@ -5,6 +5,9 @@
 #include <pthread.h>
 #endif
 #include <cstdint>
+#include <boost/interprocess/containers/set.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/managed_external_buffer.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
 
 #include "cross_platform.h"
@@ -18,6 +21,7 @@
 #include "version.h"
 
 using boost::interprocess::offset_ptr;
+namespace bip = boost::interprocess;
 
 /* privilege management */
 
@@ -99,6 +103,7 @@ struct proc {
   int nr_tasks;
   struct list_head tasks;
   pthread_rwlock_t lock;
+  unsigned pid;
   struct cred cred;
   offset_ptr<struct mm> mm;
   struct {
@@ -111,6 +116,26 @@ struct proc {
   };
   struct fileinfo fileinfo;
 };
+
+
+template <typename T>
+using extbuf_allocator_t = bip::allocator<T, bip::managed_external_buffer::segment_manager>;
+
+template <typename K, typename V>
+using extbuf_map_t = bip::map<K, V, std::less<K>, extbuf_allocator_t<std::pair<const K, V>>>;
+
+template <typename T>
+using extbuf_set_t = bip::set<T, std::less<T>, extbuf_allocator_t<T>>;
+
+struct vkern {
+  platform_handle_t shm_handle;
+  offset_ptr<extbuf_allocator_t<void>> shm_allocator;
+  unsigned next_pid;
+  offset_ptr<extbuf_map_t<unsigned, struct proc>> procs;
+};
+
+extern bip::managed_external_buffer *vkern_shm;
+extern struct vkern *vkern;
 
 extern struct proc *proc;
 _Thread_local extern struct task task;

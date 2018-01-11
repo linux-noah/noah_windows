@@ -67,7 +67,7 @@ do_munmap(gaddr_t gaddr, size_t size)
     vm_munmap(overlapping->gaddr, overlapping->size);
     platform_unmap_mem(overlapping->haddr, overlapping->handle, overlapping->size);
     free(overlapping);
-    if (next == &proc->mm->mm_regions)
+    if (next == &proc->mm->mm_region_list)
       break;
     overlapping = list_entry(next, struct mm_region, list);
   }

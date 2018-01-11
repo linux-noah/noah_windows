@@ -19,15 +19,13 @@
 #include "x86/vm.h"
 #include "x86/specialreg.h"
 
-namespace bi = boost::interprocess;
+namespace bip = boost::interprocess;
 
 /* 
  * Manage kernel memory space allocated by kmap.
  * Some members related to user memory space such as start_brk are meaningless in vkern_mm.
  */
 struct mm vkern_mm;
-bi::managed_external_buffer *vkern_shm;
-platform_handle_t vkern_shm_handle;
 
 void init_mmap(struct mm *mm);
 
@@ -179,25 +177,13 @@ init_mm(struct mm *mm)
   memset(mm, 0, sizeof(struct mm));
   init_mmap(mm);
 
-  INIT_LIST_HEAD(&mm->mm_regions);
+  mm->mm_regions =
+    vkern_shm->construct<extbuf_set_t<mm_region>>
+                 (bip::anonymous_instance)(std::less<mm_region>(), *vkern->shm_allocator);
+
+  INIT_LIST_HEAD(&mm->mm_region_list);
   RB_INIT(&mm->mm_region_tree);
   pthread_rwlock_init(&mm->alloc_lock, NULL);
-}
-
-void
-init_vkern_shm()
-{
-#ifdef _WIN32
-  const int platform_mflags = MAP_INHERIT;
-#else
-  const int platform_mflags = MAP_SHARED | MAP_ANONYMOUS;
-#endif
-  void *buf;
-  int err = platform_map_mem(&buf, &vkern_shm_handle, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
-  vkern_shm = new bi::managed_external_buffer(bi::create_only, buf, 0x1000000);
 }
 
 void *
@@ -214,7 +200,7 @@ guest_to_host(gaddr_t gaddr)
 }
 
 int
-region_compare(struct mm_region *r1, struct mm_region *r2)
+region_compare(const struct mm_region *r1, const struct mm_region *r2)
 {
   if (r1->gaddr >= r2->gaddr + r2->size) {
     return 1;
@@ -224,6 +210,12 @@ region_compare(struct mm_region *r1, struct mm_region *r2)
   }
   
   return 0;
+}
+
+bool
+operator<(const struct mm_region& r1, const struct mm_region& r2)
+{
+  return region_compare(&r1, &r2) == -1;
 }
 
 RB_GENERATE(mm_region_tree, mm_region, tree, region_compare);
@@ -278,7 +270,7 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
 {
   assert(gaddr != 0);
 
-  struct mm_region *region = reinterpret_cast<struct mm_region *>(malloc(sizeof *region));
+  struct mm_region *region = vkern_shm->construct<mm_region>(bip::anonymous_instance)();
   region->handle = handle;
   region->haddr = haddr;
   region->gaddr = gaddr;
@@ -293,7 +285,7 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
   }
   struct mm_region *prev = RB_PREV(mm_region_tree, &mm->mm_region_tree, region);
   if (prev == NULL) {
-    list_add(&region->list, &mm->mm_regions);
+    list_add(&region->list, &mm->mm_region_list);
   } else {
     list_add(&region->list, &prev->list);
   }
@@ -311,14 +303,14 @@ void
 destroy_mm(struct mm *mm)
 {
   struct list_head *list, *t;
-  list_for_each_safe (list, t, &mm->mm_regions) {
+  list_for_each_safe (list, t, &mm->mm_region_list) {
     struct mm_region *r = list_entry(list, struct mm_region, list);
     platform_unmap_mem(r->haddr, r->handle, r->size);
     vm_munmap(r->gaddr, r->size);
     free(r);
   }
   RB_INIT(&mm->mm_region_tree);
-  INIT_LIST_HEAD(&mm->mm_regions);
+  INIT_LIST_HEAD(&mm->mm_region_list);
 }
 
 bool

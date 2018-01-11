@@ -7,6 +7,8 @@
 #include <pthread.h>
 #endif
 #include <cstdbool>
+#include <boost/interprocess/containers/set.hpp>
+#include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/managed_external_buffer.hpp>
 
 #include "cross_platform.h"
@@ -15,11 +17,9 @@
 #include "util/list.h"
 #include "util/tree.h"
 
-#ifdef _WIN32
-typedef HANDLE platform_handle_t;
-#else
-typedef int platform_handle_t;
-#endif
+namespace bip = boost::interprocess;
+
+using bip::offset_ptr;
 
 /* interface to user memory */
 
@@ -55,7 +55,9 @@ struct mm_region {
 
 struct mm {
   struct mm_region_tree mm_region_tree;
-  struct list_head mm_regions;
+  struct list_head mm_region_list;
+  offset_ptr<extbuf_set_t<mm_region>> mm_regions;
+
   uint64_t start_brk, current_brk;
   uint64_t current_mmap_top;
   pthread_rwlock_t alloc_lock;
@@ -64,9 +66,6 @@ struct mm {
 extern const gaddr_t user_addr_max;
 
 extern struct mm vkern_mm;
-extern boost::interprocess::managed_external_buffer *vkern_shm;
-
-void init_vkern_shm();
 
 void init_page();
 void init_segment();
@@ -75,7 +74,7 @@ void init_mm(struct mm *mm);
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 
 RB_PROTOTYPE(mm_region_tree, mm_region, tree, mm_region_cmp);
-int region_compare(struct mm_region *r1, struct mm_region *r2);
+int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
 struct mm_region *find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
 struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);

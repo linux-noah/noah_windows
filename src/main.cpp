@@ -302,11 +302,12 @@ init_fpu()
 static void
 init_first_proc(const char *root)
 {
-  proc = vkern_shm->construct<struct proc>("proc", std::nothrow)();
+  proc = vkern_shm->construct<struct proc>(bip::anonymous_instance)();
   memset(proc, 0, sizeof(proc));
+  proc->pid = vkern->next_pid++;
   proc->nr_tasks = 1;
   pthread_rwlock_init(&proc->lock, NULL);
-  proc->mm = vkern_shm->construct<struct mm>("mm", std::nothrow)();
+  proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
   INIT_LIST_HEAD(&proc->tasks);
   list_add(&task.head, &proc->tasks);
   init_mm(proc->mm.get());
@@ -331,13 +332,49 @@ init_first_proc(const char *root)
   };
   */
 
-  task.tid = 0; //TODO
+  task.tid = proc->pid; //TODO
+
+  (*vkern->procs)[proc->pid] = *proc;
+}
+
+struct vkern *vkern;
+bip::managed_external_buffer *vkern_shm;
+
+platform_handle_t
+init_vkern_shm()
+{
+  platform_handle_t shm_handle;
+#ifdef _WIN32
+  const int platform_mflags = MAP_INHERIT;
+#else
+  const int platform_mflags = MAP_SHARED | MAP_ANONYMOUS;
+#endif
+  void *buf;
+  int err = platform_map_mem(&buf, &shm_handle, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC, platform_mflags);
+  if (err < 0) {
+    abort();
+  }
+  vkern_shm = new bip::managed_external_buffer(bip::create_only, buf, 0x1000000);
+  return shm_handle;
+}
+
+void
+init_vkern_struct()
+{
+  platform_handle_t shm_handle = init_vkern_shm();
+  vkern = vkern_shm->construct<struct vkern>("vkern", std::nothrow)();
+  vkern->shm_handle = shm_handle;
+  vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
+                                      (bip::anonymous_instance)(vkern_shm->get_segment_manager());
+  vkern->next_pid = 2;
+  vkern->procs = vkern_shm->construct<extbuf_map_t<unsigned, struct proc>>
+                              (bip::anonymous_instance)(*vkern->shm_allocator);
 }
 
 static void
 init_vkernel(const char *root)
 {
-  init_vkern_shm();
+  init_vkern_struct();
   init_mm(&vkern_mm);
   init_page();
   init_special_regs();

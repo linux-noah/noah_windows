@@ -8,7 +8,7 @@
 #include "linux/mman.h"
 #include "mm.h"
 
-namespace bi = boost::interprocess;
+namespace bip = boost::interprocess;
 
 static inline int
 prot_to_page_access(int prot, bool cow)

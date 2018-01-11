@@ -24,6 +24,8 @@
 // Types
 
 typedef int64_t ssize_t;
+typedef HANDLE platform_handle_t;
+
 
 // Temporary stubs for pthread
 
@@ -59,6 +61,8 @@ typedef int64_t ssize_t;
 #define TYPEDEF_PAGE_ALIGNED(t) typedef t __attribute__ ((aligned(0x1000))) 
 
 #define UNREACHABLE() __builtin_unreachable()
+
+typedef int platform_handle_t;
 
 #endif
 
