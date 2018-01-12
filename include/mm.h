@@ -39,7 +39,6 @@ ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 RB_HEAD(mm_region_tree, mm_region);
 
 struct mm_region {
-  RB_ENTRY(mm_region) tree;
   platform_handle_t handle;
   void *haddr;
   gaddr_t gaddr;
@@ -49,7 +48,6 @@ struct mm_region {
   int mm_fd;
   int pgoff;           /* offset within mm_fd in page size */
   bool is_global;      /* global page flag. Preserved during exec if global */
-  struct list_head list;
 };
 
 struct mm {
@@ -57,10 +55,7 @@ struct mm {
   using mm_regions_t = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, std::function<bool(mm_regions_key_t, mm_regions_key_t)>>;
   using mm_regions_iter_t = mm::mm_regions_t::iterator;
 
-  struct mm_region_tree mm_region_tree;
-  struct list_head mm_region_list;
   offset_ptr<mm_regions_t> mm_regions;
-
   uint64_t start_brk, current_brk;
   uint64_t current_mmap_top;
   pthread_rwlock_t alloc_lock;
@@ -76,7 +71,6 @@ void init_mm(struct mm *mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 
-RB_PROTOTYPE(mm_region_tree, mm_region, tree, mm_region_cmp);
 int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
 std::pair<mm::mm_regions_iter_t, mm::mm_regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);

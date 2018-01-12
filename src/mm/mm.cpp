@@ -176,13 +176,9 @@ init_mm(struct mm *mm)
 {
   memset(mm, 0, sizeof(struct mm));
   init_mmap(mm);
-
   mm->mm_regions =
     vkern_shm->construct<mm::mm_regions_t>
     (bip::anonymous_instance)([](auto r1, auto r2) {return r1.second <= r2.first;}, *vkern->shm_allocator);
-
-  INIT_LIST_HEAD(&mm->mm_region_list);
-  RB_INIT(&mm->mm_region_tree);
   pthread_rwlock_init(&mm->alloc_lock, NULL);
 }
 
@@ -211,8 +207,6 @@ region_compare(const struct mm_region *r1, const struct mm_region *r2)
   
   return 0;
 }
-
-RB_GENERATE(mm_region_tree, mm_region, tree, region_compare);
 
 struct mm_region*
 /* Look up the mm_region which gaddr in [mm_region->gaddr, +size) */
@@ -265,12 +259,6 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
   if (!inserted.second) {
     panic("recording overlapping regions\n");
   }
-  struct mm_region *prev = RB_PREV(mm_region_tree, &mm->mm_region_tree, region);
-  if (prev == NULL) {
-    list_add(&region->list, &mm->mm_region_list);
-  } else {
-    list_add(&region->list, &prev->list);
-  }
 
   return region;
 }
@@ -284,15 +272,6 @@ is_region_private(struct mm_region *region)
 void
 destroy_mm(struct mm *mm)
 {
-  struct list_head *list, *t;
-  list_for_each_safe (list, t, &mm->mm_region_list) {
-    struct mm_region *r = list_entry(list, struct mm_region, list);
-    platform_unmap_mem(r->haddr, r->handle, r->size);
-    vm_munmap(r->gaddr, r->size);
-    free(r);
-  }
-  RB_INIT(&mm->mm_region_tree);
-  INIT_LIST_HEAD(&mm->mm_region_list);
   for (auto cur : *mm->mm_regions) {
     auto r = cur.second.get();
     platform_unmap_mem(r->haddr, r->handle, r->size);
