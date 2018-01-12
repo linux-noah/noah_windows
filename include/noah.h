@@ -124,10 +124,12 @@ template <typename K, typename V, typename Compare = std::less<K>>
 using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const K, V>>>;
 
 struct vkern {
+  using procs_t = extbuf_map_t<unsigned, offset_ptr<struct proc>>;
+
   platform_handle_t shm_handle;
   offset_ptr<extbuf_allocator_t<void>> shm_allocator;
   unsigned next_pid;
-  offset_ptr<extbuf_map_t<unsigned, struct proc>> procs;
+  offset_ptr<procs_t> procs;
 };
 
 extern bip::managed_external_buffer *vkern_shm;

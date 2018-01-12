@@ -332,9 +332,8 @@ init_first_proc(const char *root)
   };
   */
 
-  task.tid = proc->pid; //TODO
-
-  (*vkern->procs)[proc->pid] = *proc;
+  task.tid = proc->pid;
+  vkern->procs->emplace(proc->pid, offset_ptr<struct proc>(proc));
 }
 
 struct vkern *vkern;
@@ -367,7 +366,7 @@ init_vkern_struct()
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
   vkern->next_pid = 2;
-  vkern->procs = vkern_shm->construct<extbuf_map_t<unsigned, struct proc>>
+  vkern->procs = vkern_shm->construct<vkern::procs_t>
                               (bip::anonymous_instance)(*vkern->shm_allocator);
 }
 
