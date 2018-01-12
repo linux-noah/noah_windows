@@ -120,8 +120,8 @@ struct proc {
 template <typename T>
 using extbuf_allocator_t = bip::allocator<T, bip::managed_external_buffer::segment_manager>;
 
-template <typename K, typename V>
-using extbuf_map_t = bip::map<K, V, std::less<K>, extbuf_allocator_t<std::pair<const K, V>>>;
+template <typename K, typename V, typename Compare = std::less<K>>
+using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const K, V>>>;
 
 struct vkern {
   platform_handle_t shm_handle;

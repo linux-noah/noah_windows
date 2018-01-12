@@ -179,7 +179,7 @@ init_mm(struct mm *mm)
 
   mm->mm_regions =
     vkern_shm->construct<mm::mm_regions_t>
-                 (bip::anonymous_instance)(std::less<mm::mm_regions_key_t>(), *vkern->shm_allocator);
+    (bip::anonymous_instance)([](auto r1, auto r2) {return r1.second <= r2.first;}, *vkern->shm_allocator);
 
   INIT_LIST_HEAD(&mm->mm_region_list);
   RB_INIT(&mm->mm_region_tree);
@@ -218,45 +218,32 @@ struct mm_region*
 /* Look up the mm_region which gaddr in [mm_region->gaddr, +size) */
 find_region(gaddr_t gaddr, struct mm *mm)
 {
-  struct mm_region find;
-  find.gaddr = gaddr;
-  find.size = 1;
-  return RB_FIND(mm_region_tree, &mm->mm_region_tree, &find);
+  auto find = mm->mm_regions->find(mm::mm_regions_key_t(gaddr, gaddr + 1));
+  if (find != mm->mm_regions->end()) {
+    return find->second.get();
+  }
+  return nullptr;
 }
 
-struct mm_region*
-/* Look up the lowest mm_region that overlaps with the region */
+std::pair<mm::mm_regions_iter_t, mm::mm_regions_iter_t>
 find_region_range(gaddr_t gaddr, size_t size, struct mm *mm)
 {
-  struct mm_region find;
-  find.gaddr = gaddr;
-  find.size = size;
-  struct mm_region *leftmost = RB_FIND(mm_region_tree, &mm->mm_region_tree, &find);
-  if (leftmost == NULL)
-    return NULL;
-  while (RB_LEFT(leftmost, tree) != NULL && region_compare(&find, RB_LEFT(leftmost, tree)) == 0)
-    leftmost = RB_LEFT(leftmost, tree);
-  return leftmost;
+  return mm->mm_regions->equal_range(mm::mm_regions_key_t(gaddr, gaddr + size));
 }
 
-void
+std::pair<mm_region *, mm_region *>
 split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
 {
   assert(is_page_aligned((void*)gaddr, PAGE_4KB));
 
-  struct mm_region *tail = reinterpret_cast<struct mm_region *>(malloc(sizeof(struct mm_region)));
-  gaddr_t offset = gaddr - region->gaddr;
-  tail->haddr = (char *)region->haddr + offset;
-  tail->gaddr = gaddr;
-  tail->size = region->size - offset;
-  tail->prot = region->prot;
-  tail->mm_flags = region->mm_flags;
-  tail->mm_fd = region->mm_fd;
-  tail->pgoff = region->pgoff;
+  auto offset = gaddr - region->gaddr;
+  auto sp_haddr = (char *)region->haddr + offset;
+  auto sp_size = region->size - offset;
+  auto sp_pgoff = region->pgoff + offset;
 
   region->size = offset;
-  list_add(&tail->list, &region->list);
-  RB_INSERT(mm_region_tree, &mm->mm_region_tree, tail);
+  auto tail = record_region(mm, region->handle, sp_haddr, region->gaddr, sp_size, region->prot, region->mm_flags, region->mm_fd, sp_pgoff);
+  return std::pair<mm_region *, mm_region *>(region, tail);
 }
 
 struct mm_region*
@@ -264,7 +251,7 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
 {
   assert(gaddr != 0);
 
-  struct mm_region *region = vkern_shm->construct<mm_region>(bip::anonymous_instance)();
+  auto region = vkern_shm->construct<mm_region>(bip::anonymous_instance)();
   region->handle = handle;
   region->haddr = haddr;
   region->gaddr = gaddr;
@@ -274,7 +261,8 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
   region->mm_fd = mm_fd;
   region->pgoff = pgoff;
 
-  if (RB_INSERT(mm_region_tree, &mm->mm_region_tree, region) != NULL) {
+  auto inserted = mm->mm_regions->emplace(mm::mm_regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
+  if (!inserted.second) {
     panic("recording overlapping regions\n");
   }
   struct mm_region *prev = RB_PREV(mm_region_tree, &mm->mm_region_tree, region);
@@ -305,6 +293,14 @@ destroy_mm(struct mm *mm)
   }
   RB_INIT(&mm->mm_region_tree);
   INIT_LIST_HEAD(&mm->mm_region_list);
+  for (auto cur : *mm->mm_regions) {
+    auto r = cur.second.get();
+    platform_unmap_mem(r->haddr, r->handle, r->size);
+    vm_munmap(r->gaddr, r->size);
+    vkern_shm->destroy_ptr<mm_region>(r);
+  }
+  vkern_shm->destroy_ptr<mm::mm_regions_t>(mm->mm_regions.get());
+  mm->mm_regions = 0;
 }
 
 bool

@@ -7,7 +7,6 @@
 #include <pthread.h>
 #endif
 #include <cstdbool>
-#include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/managed_external_buffer.hpp>
 
@@ -55,8 +54,8 @@ struct mm_region {
 
 struct mm {
   using mm_regions_key_t = std::pair<gaddr_t, gaddr_t>;
-  using mm_regions_t = extbuf_map_t<mm_regions_key_t, mm_region>;
-
+  using mm_regions_t = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, std::function<bool(mm_regions_key_t, mm_regions_key_t)>>;
+  using mm_regions_iter_t = mm::mm_regions_t::iterator;
 
   struct mm_region_tree mm_region_tree;
   struct list_head mm_region_list;
@@ -80,9 +79,9 @@ gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 RB_PROTOTYPE(mm_region_tree, mm_region, tree, mm_region_cmp);
 int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
-struct mm_region *find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
+std::pair<mm::mm_regions_iter_t, mm::mm_regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
 struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
-void split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
+std::pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
 void destroy_mm(struct mm *mm);
 
 bool is_region_private(struct mm_region*);
