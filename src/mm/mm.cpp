@@ -34,13 +34,13 @@ kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
 
-  pthread_rwlock_wrlock(&vkern->mm.alloc_lock);
+  pthread_rwlock_wrlock(&vkern->mm->alloc_lock);
 
   record_region(vkern->mm.get(), handle, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
-  pthread_rwlock_unlock(&vkern->mm.alloc_lock);
+  pthread_rwlock_unlock(&vkern->mm->alloc_lock);
 
   return noah_kern_brk - size;
 }
