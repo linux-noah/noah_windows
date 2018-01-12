@@ -26,18 +26,18 @@ static int
 vasprintf(char **out, const char *fmt, va_list ap)
 {
   int len = _vscprintf(fmt, ap);
-  *out = (char *)malloc(len);
+  *out = (char *)malloc(len + 1);
   if (out == NULL) {
     return -1;
   }
-  return vsprintf_s(*out, len, fmt, ap);
+  return vsprintf_s(*out, len + 1, fmt, ap);
 }
 
 static int
 asprintf(char **out, const char *fmt, ...)
 {
   va_list ap;
-  va_start(ap, out);
+  va_start(ap, fmt);
   int ret = vasprintf(out, fmt, ap);
   va_end(ap);
   return ret;
