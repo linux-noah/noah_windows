@@ -66,6 +66,7 @@ extern const gaddr_t user_addr_max;
 void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
+void copy_mm(struct mm *dst_mm, struct mm *src_mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 

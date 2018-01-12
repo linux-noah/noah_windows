@@ -7,7 +7,19 @@
 
 #include "common.h"
 #include "noah.h"
+#include "mm.h"
 #include "syscall.h"
+
+void
+copy_proc(struct proc *dst_proc, struct proc *src_proc)
+{
+  *dst_proc = *src_proc;
+  dst_proc->pid = vkern->next_pid++;
+  dst_proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
+  copy_mm(dst_proc->mm.get(), src_proc->mm.get());
+  // TODO: Copy the all left. Leave it later assuming currently 
+  //       we are not using these structures
+}
 
 int
 platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls)
@@ -20,9 +32,11 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   // 1. Replace CR3's page mapping with read only one
   // 2. Create new proc structure
   //     1. allocate new proc from shared memroy
+  struct proc *new_proc = vkern_shm->construct<struct proc>(bip::anonymous_instance)();
   //     2. copy proc structure
   //     3. copy mm and so on
-  //     4. copy vkern_mm
+  copy_proc(new_proc, proc);
+  //     4. copy vkern_mm (Not needed anymore since we adopt the central shared memory)
   // 3. Take a snapshot of the VM
   //     1. Copy registers and VMCS of the VM
   //     2. Save it to vkern_shm

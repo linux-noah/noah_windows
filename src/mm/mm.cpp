@@ -177,6 +177,26 @@ init_mm(struct mm *mm)
   pthread_rwlock_init(&mm->alloc_lock, NULL);
 }
 
+void
+copy_mm(struct mm *dst_mm, struct mm *src_mm)
+{
+  *dst_mm = *src_mm;
+  pthread_rwlock_init(&dst_mm->alloc_lock, NULL);
+}
+
+void
+destroy_mm(struct mm *mm)
+{
+  for (auto cur : *mm->mm_regions) {
+    auto r = cur.second.get();
+    platform_unmap_mem(r->haddr, r->handle, r->size);
+    vm_munmap(r->gaddr, r->size);
+    vkern_shm->destroy_ptr<mm_region>(r);
+  }
+  vkern_shm->destroy_ptr<mm::mm_regions_t>(mm->mm_regions.get());
+  mm->mm_regions = 0;
+}
+
 void *
 guest_to_host(gaddr_t gaddr)
 {
@@ -262,19 +282,6 @@ bool
 is_region_private(struct mm_region *region)
 {
   return !(region->mm_flags & LINUX_MAP_SHARED) && region->mm_fd == -1;
-}
-
-void
-destroy_mm(struct mm *mm)
-{
-  for (auto cur : *mm->mm_regions) {
-    auto r = cur.second.get();
-    platform_unmap_mem(r->haddr, r->handle, r->size);
-    vm_munmap(r->gaddr, r->size);
-    vkern_shm->destroy_ptr<mm_region>(r);
-  }
-  vkern_shm->destroy_ptr<mm::mm_regions_t>(mm->mm_regions.get());
-  mm->mm_regions = 0;
 }
 
 bool
