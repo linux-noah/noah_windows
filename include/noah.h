@@ -5,7 +5,6 @@
 #include <pthread.h>
 #endif
 #include <cstdint>
-#include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/managed_external_buffer.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
@@ -123,9 +122,6 @@ using extbuf_allocator_t = bip::allocator<T, bip::managed_external_buffer::segme
 
 template <typename K, typename V>
 using extbuf_map_t = bip::map<K, V, std::less<K>, extbuf_allocator_t<std::pair<const K, V>>>;
-
-template <typename T>
-using extbuf_set_t = bip::set<T, std::less<T>, extbuf_allocator_t<T>>;
 
 struct vkern {
   platform_handle_t shm_handle;

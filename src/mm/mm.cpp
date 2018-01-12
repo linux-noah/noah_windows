@@ -178,8 +178,8 @@ init_mm(struct mm *mm)
   init_mmap(mm);
 
   mm->mm_regions =
-    vkern_shm->construct<extbuf_set_t<mm_region>>
-                 (bip::anonymous_instance)(std::less<mm_region>(), *vkern->shm_allocator);
+    vkern_shm->construct<extbuf_map_t<std::pair<gaddr_t, size_t>, mm_region>>
+                 (bip::anonymous_instance)(std::less<std::pair<gaddr_t, size_t>>(), *vkern->shm_allocator);
 
   INIT_LIST_HEAD(&mm->mm_region_list);
   RB_INIT(&mm->mm_region_tree);
