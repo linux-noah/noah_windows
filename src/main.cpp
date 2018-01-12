@@ -365,6 +365,7 @@ init_vkern_struct()
   vkern->shm_handle = shm_handle;
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
+  vkern->mm = vkern_shm->construct<mm>(bip::anonymous_instance)();
   vkern->next_pid = 2;
   vkern->procs = vkern_shm->construct<vkern::procs_t>
                               (bip::anonymous_instance)(*vkern->shm_allocator);
@@ -374,7 +375,7 @@ static void
 init_vkernel(const char *root)
 {
   init_vkern_struct();
-  init_mm(&vkern_mm);
+  init_mm(vkern->mm.get());
   init_page();
   init_special_regs();
   init_segment();

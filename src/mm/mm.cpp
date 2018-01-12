@@ -21,11 +21,6 @@
 
 namespace bip = boost::interprocess;
 
-/* 
- * Manage kernel memory space allocated by kmap.
- * Some members related to user memory space such as start_brk are meaningless in vkern_mm.
- */
-struct mm vkern_mm;
 
 void init_mmap(struct mm *mm);
 
@@ -39,13 +34,13 @@ kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
 
-  pthread_rwlock_wrlock(&vkern_mm.alloc_lock);
+  pthread_rwlock_wrlock(&vkern->mm.alloc_lock);
 
-  record_region(&vkern_mm, handle, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
+  record_region(vkern->mm.get(), handle, ptr, noah_kern_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(noah_kern_brk, size, flags, ptr);
   noah_kern_brk += size;
 
-  pthread_rwlock_unlock(&vkern_mm.alloc_lock);
+  pthread_rwlock_unlock(&vkern->mm.alloc_lock);
 
   return noah_kern_brk - size;
 }
@@ -187,7 +182,7 @@ guest_to_host(gaddr_t gaddr)
 {
   struct mm_region *region = find_region(gaddr, proc->mm.get());
   if (!region) {
-    region = find_region(gaddr, &vkern_mm);
+    region = find_region(gaddr, vkern->mm.get());
   }
   if (!region) {
     return NULL;

@@ -63,8 +63,6 @@ struct mm {
 
 extern const gaddr_t user_addr_max;
 
-extern struct mm vkern_mm;
-
 void init_page();
 void init_segment();
 void init_mm(struct mm *mm);

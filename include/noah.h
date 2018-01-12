@@ -128,6 +128,11 @@ struct vkern {
 
   platform_handle_t shm_handle;
   offset_ptr<extbuf_allocator_t<void>> shm_allocator;
+
+  // Manage kernel memory space allocated by kmap.
+  // Some members related to user memory space such as start_brk are meaningless in this.
+  offset_ptr<struct mm> mm;
+
   unsigned next_pid;
   offset_ptr<procs_t> procs;
 };
