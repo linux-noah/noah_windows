@@ -178,8 +178,8 @@ init_mm(struct mm *mm)
   init_mmap(mm);
 
   mm->mm_regions =
-    vkern_shm->construct<extbuf_map_t<std::pair<gaddr_t, size_t>, mm_region>>
-                 (bip::anonymous_instance)(std::less<std::pair<gaddr_t, size_t>>(), *vkern->shm_allocator);
+    vkern_shm->construct<mm::mm_regions_t>
+                 (bip::anonymous_instance)(std::less<mm::mm_regions_key_t>(), *vkern->shm_allocator);
 
   INIT_LIST_HEAD(&mm->mm_region_list);
   RB_INIT(&mm->mm_region_tree);
@@ -210,12 +210,6 @@ region_compare(const struct mm_region *r1, const struct mm_region *r2)
   }
   
   return 0;
-}
-
-bool
-operator<(const struct mm_region& r1, const struct mm_region& r2)
-{
-  return region_compare(&r1, &r2) == -1;
 }
 
 RB_GENERATE(mm_region_tree, mm_region, tree, region_compare);

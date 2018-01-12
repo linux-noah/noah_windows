@@ -54,9 +54,13 @@ struct mm_region {
 };
 
 struct mm {
+  using mm_regions_key_t = std::pair<gaddr_t, gaddr_t>;
+  using mm_regions_t = extbuf_map_t<mm_regions_key_t, mm_region>;
+
+
   struct mm_region_tree mm_region_tree;
   struct list_head mm_region_list;
-  offset_ptr<extbuf_map_t<std::pair<gaddr_t, size_t>, mm_region>> mm_regions;
+  offset_ptr<mm_regions_t> mm_regions;
 
   uint64_t start_brk, current_brk;
   uint64_t current_mmap_top;
