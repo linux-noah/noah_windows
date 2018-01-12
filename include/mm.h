@@ -13,8 +13,6 @@
 #include "cross_platform.h"
 #include "types.h"
 #include "noah.h"
-#include "util/list.h"
-#include "util/tree.h"
 
 namespace bip = boost::interprocess;
 
@@ -35,8 +33,6 @@ size_t copy_to_user(gaddr_t gaddr, const void *haddr, size_t n);
 ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 
 /* memory related structures */
-
-RB_HEAD(mm_region_tree, mm_region);
 
 struct mm_region {
   platform_handle_t handle;
