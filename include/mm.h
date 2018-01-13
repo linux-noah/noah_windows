@@ -36,24 +36,30 @@ ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 
 struct mm_region {
   platform_handle_t handle;
+  /* If this region is a global mapping, haddr_offset is used instead of haddr.
+   * Not using union since it prevents generation of the default constructor */
   void *haddr;
+  offset_ptr<void> haddr_offset;
   gaddr_t gaddr;
   size_t size;
   int prot;            /* Access permission that consists of LINUX_PROT_* */
   int mm_flags;        /* mm flags in the form of LINUX_MAP_* */
   int mm_fd;
   int pgoff;           /* offset within mm_fd in page size */
-  bool is_global;      /* global page flag. Preserved during exec if global */
+  bool is_global;
 };
 
 struct mm {
-  using mm_regions_key_t = std::pair<gaddr_t, gaddr_t>;
-  using mm_regions_t = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, std::function<bool(mm_regions_key_t, mm_regions_key_t)>>;
+  using mm_regions_key_t  = std::pair<gaddr_t, gaddr_t>;
+  using mm_regions_t      = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, std::function<bool(mm_regions_key_t, mm_regions_key_t)>>;
   using mm_regions_iter_t = mm::mm_regions_t::iterator;
 
   offset_ptr<mm_regions_t> mm_regions;
+  bool                     is_global;  /* If true, the mappings are global and stored in vkern_shm */
+
   uint64_t start_brk, current_brk;
   uint64_t current_mmap_top;
+
   pthread_rwlock_t alloc_lock;
 };
 
@@ -62,6 +68,7 @@ extern const gaddr_t user_addr_max;
 void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
+void init_mm(struct mm *mm, bool is_global);
 void copy_mm(struct mm *dst_mm, struct mm *src_mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
@@ -74,6 +81,7 @@ std::pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region
 void destroy_mm(struct mm *mm);
 
 bool is_region_private(struct mm_region*);
+void *mm_region_haddr(struct mm_region*);
 
 gaddr_t do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, off_t offset);
 int do_munmap(gaddr_t gaddr, size_t size);

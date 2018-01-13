@@ -167,14 +167,21 @@ init_segment()
 }
 
 void
-init_mm(struct mm *mm)
+init_mm(struct mm *mm, bool is_global)
 {
   memset(mm, 0, sizeof(struct mm));
   init_mmap(mm);
   mm->mm_regions =
     vkern_shm->construct<mm::mm_regions_t>
     (bip::anonymous_instance)([](auto r1, auto r2) {return r1.second <= r2.first;}, *vkern->shm_allocator);
+  mm->is_global = is_global;
   pthread_rwlock_init(&mm->alloc_lock, NULL);
+}
+
+void
+init_mm(struct mm *mm)
+{
+  init_mm(mm, false);
 }
 
 void
@@ -189,7 +196,7 @@ destroy_mm(struct mm *mm)
 {
   for (auto cur : *mm->mm_regions) {
     auto r = cur.second.get();
-    platform_unmap_mem(r->haddr, r->handle, r->size);
+    platform_unmap_mem(mm_region_haddr(r), r->handle, r->size);
     vm_munmap(r->gaddr, r->size);
     vkern_shm->destroy_ptr<mm_region>(r);
   }
@@ -207,7 +214,7 @@ guest_to_host(gaddr_t gaddr)
   if (!region) {
     return NULL;
   }
-  return (char *)region->haddr + gaddr - region->gaddr;
+  return (char *)mm_region_haddr(region) + gaddr - region->gaddr;
 }
 
 int
@@ -246,7 +253,7 @@ split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
   assert(is_page_aligned((void*)gaddr, PAGE_4KB));
 
   auto offset = gaddr - region->gaddr;
-  auto sp_haddr = (char *)region->haddr + offset;
+  auto sp_haddr = (char *)mm_region_haddr(region) + offset;
   auto sp_size = region->size - offset;
   auto sp_pgoff = region->pgoff + offset;
 
@@ -262,13 +269,18 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
 
   auto region = vkern_shm->construct<mm_region>(bip::anonymous_instance)();
   region->handle = handle;
-  region->haddr = haddr;
+  if (mm->is_global) {
+    region->haddr_offset = haddr;
+  } else {
+    region->haddr = haddr;
+  }
   region->gaddr = gaddr;
   region->size = size;
   region->prot = prot;
   region->mm_flags = mm_flags;
   region->mm_fd = mm_fd;
   region->pgoff = pgoff;
+  region->is_global = mm->is_global;
 
   auto inserted = mm->mm_regions->emplace(mm::mm_regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
   if (!inserted.second) {
@@ -282,6 +294,16 @@ bool
 is_region_private(struct mm_region *region)
 {
   return !(region->mm_flags & LINUX_MAP_SHARED) && region->mm_fd == -1;
+}
+
+void *
+mm_region_haddr(struct mm_region *region)
+{
+  if (region->is_global) {
+    return region->haddr_offset.get();
+  } else {
+    return region->haddr;
+  }
 }
 
 bool

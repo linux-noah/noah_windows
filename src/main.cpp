@@ -369,13 +369,13 @@ init_vkern_struct()
   vkern->next_pid = 2;
   vkern->procs = vkern_shm->construct<vkern::procs_t>
                               (bip::anonymous_instance)(*vkern->shm_allocator);
+  init_mm(vkern->mm.get(), true);
 }
 
 static void
 init_vkernel(const char *root)
 {
   init_vkern_struct();
-  init_mm(vkern->mm.get());
   init_page();
   init_special_regs();
   init_segment();
