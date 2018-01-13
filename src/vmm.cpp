@@ -217,10 +217,28 @@ run_vcpu()
 }
 
 void
-get_vcpu_state(int id, uint64_t *val)
+get_vcpu_control_state(int id, uint64_t *val)
 {
   if (vmm_cpu_get_state(vm, vcpu->vcpuid, id, val) != VMM_SUCCESS) {
+    fprintf(stderr, "get_vcpu_control_state failed\n");
+    abort();
+  }
+}
+
+void
+get_vcpu_state(struct vcpu_state *state)
+{
+  if (vmm_cpu_get_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_REGISTERS_MAX) != VMM_SUCCESS) {
     fprintf(stderr, "get_vcpu_state failed\n");
+    abort();
+  }
+}
+
+void
+set_vcpu_state(struct vcpu_state *state)
+{
+  if (vmm_cpu_set_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_REGISTERS_MAX) != VMM_SUCCESS) {
+    fprintf(stderr, "set_vcpu_state failed\n");
     abort();
   }
 }

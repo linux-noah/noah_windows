@@ -96,7 +96,7 @@ main_loop(int return_on_sigret)
     /* print_regs(); */
 
     uint64_t exit_reason;
-    get_vcpu_state(VMM_CTRL_EXIT_REASON, &exit_reason);
+    get_vcpu_control_state(VMM_CTRL_EXIT_REASON, &exit_reason);
 
     switch (exit_reason) {
     case VMM_EXIT_HLT: {
@@ -129,11 +129,11 @@ main_loop(int return_on_sigret)
 #ifdef _WIN32
       // Temorary code for debug
       uint64_t native_exit_reason = 0;
-      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      get_vcpu_control_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
       abort();
 #endif
       uint64_t exc_vec;
-      get_vcpu_state(VMM_CTRL_EXCEPTION_VECTOR, &exc_vec);
+      get_vcpu_control_state(VMM_CTRL_EXCEPTION_VECTOR, &exc_vec);
       switch (exc_vec) {
       case X86_VEC_PF: {
         // TODO
@@ -183,7 +183,7 @@ main_loop(int return_on_sigret)
     }
     case VMM_EXIT_SHUTDOWN: {
       uint64_t native_exit_reason = 0;
-      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      get_vcpu_control_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
       // TODO: Define Basic exit reason constants in libhv
       printk("Unexpected VMM_EXIT_SHUTDOWN\n");
       abort();
@@ -195,7 +195,7 @@ main_loop(int return_on_sigret)
 #ifdef _WIN32
       // TODO: Implement VMM_CTRL_NATIVE_EXIT_REASON in libhv
       uint64_t native_exit_reason = 0;
-      get_vcpu_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      get_vcpu_control_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
       printk("native exit reason: %llu\n", native_exit_reason);
       uint64_t rip;
       read_register(VMM_X64_RIP, &rip);
