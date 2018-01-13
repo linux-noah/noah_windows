@@ -311,6 +311,7 @@ init_first_proc(const char *root)
   INIT_LIST_HEAD(&proc->tasks);
   list_add(&task.head, &proc->tasks);
   init_mm(proc->mm.get());
+  proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
   // init_signal();
   /*
   int rootfd = open(root, O_RDONLY | O_DIRECTORY);

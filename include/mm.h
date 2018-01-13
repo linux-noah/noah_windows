@@ -69,7 +69,7 @@ void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
 void init_mm(struct mm *mm, bool is_global);
-void copy_mm(struct mm *dst_mm, struct mm *src_mm);
+void clone_mm(struct mm *dst_mm, struct mm *src_mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 

@@ -114,6 +114,7 @@ struct proc {
     khash_t(pfutex) *pfutex; /* TODO: modify khash and make this field being non-pointer */
   };
   struct fileinfo fileinfo;
+  offset_ptr<struct vcpu_state> vcpu_state;  // Used for fork. Should be moved into task afer supporting threads
 };
 
 

@@ -185,7 +185,7 @@ init_mm(struct mm *mm)
 }
 
 void
-copy_mm(struct mm *dst_mm, struct mm *src_mm)
+clone_mm(struct mm *dst_mm, struct mm *src_mm)
 {
   *dst_mm = *src_mm;
   pthread_rwlock_init(&dst_mm->alloc_lock, NULL);

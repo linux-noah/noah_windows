@@ -4,19 +4,22 @@
 #include <cstring>
 #include <string>
 #include <Windows.h>
+#include <boost/format.hpp>
 
 #include "common.h"
 #include "noah.h"
 #include "mm.h"
+#include "vm.h"
 #include "syscall.h"
 
 void
-copy_proc(struct proc *dst_proc, struct proc *src_proc)
+clone_proc(struct proc *dst_proc, struct proc *src_proc)
 {
   *dst_proc = *src_proc;
   dst_proc->pid = vkern->next_pid++;
   dst_proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
-  copy_mm(dst_proc->mm.get(), src_proc->mm.get());
+  clone_mm(dst_proc->mm.get(), src_proc->mm.get());
+  dst_proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
   // TODO: Copy the all left. Leave it later assuming currently 
   //       we are not using these structures
 }
@@ -35,17 +38,34 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   struct proc *new_proc = vkern_shm->construct<struct proc>(bip::anonymous_instance)();
   //     2. copy proc structure
   //     3. copy mm and so on
-  copy_proc(new_proc, proc);
-  //     4. copy vkern_mm (Not needed anymore since we adopt the central shared memory)
+  clone_proc(new_proc, proc);
+  //     4. ~~copy vkern_mm~~ Not needed anymore since we adopt the central shared memory
   // 3. Take a snapshot of the VM
   //     1. Copy registers and VMCS of the VM
   //     2. Save it to vkern_shm
+  get_vcpu_state(new_proc->vcpu_state.get());
   // 4. Create process
   //     1. Construct command line or environment var that tell handle of vkern_shm
+  TCHAR bin[MAX_PATH];
+  auto bin_len = GetModuleFileName(NULL, bin, MAX_PATH);
+  if (bin_len == MAX_PATH && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+    return -LINUX_ENAMETOOLONG;
+  }
+  auto cur_cmd = GetCommandLine();
+  auto new_cmd = str(boost::format("%1 --child --shm_fd=%2") % cur_cmd % reinterpret_cast<uint64_t>(vkern_shm));
+  TCHAR *new_cmd_cstr = reinterpret_cast<TCHAR *>(alloca(new_cmd.size()));
+  strcpy(new_cmd_cstr, new_cmd.c_str());
+  STARTUPINFO info;
+  PROCESS_INFORMATION proc_info;
   //     2. Call CreateProcess
+  auto succ = CreateProcess(bin, new_cmd_cstr, NULL, NULL, true, NULL, NULL, NULL, &info, &proc_info);
+  if (!succ) {
+    return -LINUX_EINVAL; // TODO
+  }
   //     3. Done. The new process restores its process-state
   // 5. Setup the new state
   //     1. set new PID in rax
+  write_register(VMM_X64_RAX, new_proc->pid);
   // # What to Do in the New Process
   // 1. The new process restores its state
   //     1. Setup vkern_shm by the argument
@@ -70,5 +90,5 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   // 5. Copy the contents of the page
   // 6. Make the region writable in guest's CR3
 
-  return -LINUX_EINVAL;
+  return 0;
 }
