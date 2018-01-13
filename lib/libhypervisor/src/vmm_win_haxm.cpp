@@ -311,10 +311,18 @@ vmm_cpu_run(vmm_vm_t vm, vmm_cpu_t cpu)
   return hax_run_vcpu(cpu->vcpufd);
 }
 
-static inline uint64_t
-gs_vcpu_state(int reg, struct vcpu_state_t *state, uint64_t value, bool sets)
+static inline vmm_return_t
+gs_vcpu_state(int reg, struct vcpu_state_t *state, uint64_t *value, bool sets)
 {
-#define SET_OR_GET(field) do {return sets ? ((field) = value) : (field);} while(0)
+#define SET_OR_GET(field) do {    \
+          if (sets) {             \
+            ((field) = *value);   \
+          } else {                \
+            *value = (field);     \
+          }                       \
+          return VMM_SUCCESS;     \
+        } while(0)
+
   switch (reg) {
   case VMM_X64_RIP:    SET_OR_GET(state->rip);
   case VMM_X64_RFLAGS: SET_OR_GET(state->rflags);
@@ -393,11 +401,11 @@ gs_vcpu_state(int reg, struct vcpu_state_t *state, uint64_t value, bool sets)
   case VMM_X64_XCR0:
     assert(false); // TODO
   default:
-    assert(false);
+    return VMM_EINVAL;
   }
 
-  assert(false);
-  return 0;
+  assert(false); // unreachable
+  return VMM_EINVAL;
 }
 
 vmm_return_t
@@ -407,7 +415,9 @@ vmm_cpu_set_register(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_t reg, uint64_t val
   vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
   if (ret != VMM_SUCCESS)
     return ret;
-  gs_vcpu_state(reg, &state, value, true);
+  ret = gs_vcpu_state(reg, &state, &value, true);
+  if (ret != VMM_SUCCESS)
+    return ret;
   return hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
 }
 
@@ -418,7 +428,9 @@ vmm_cpu_get_register(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_t reg, uint64_t *va
   vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
   if (ret != VMM_SUCCESS)
     return ret;
-  *value = gs_vcpu_state(reg, &state, 0, false);
+  ret = gs_vcpu_state(reg, &state, value, false);
+  if (ret != VMM_SUCCESS)
+    return ret;
   return VMM_SUCCESS;
 }
 
@@ -490,4 +502,34 @@ vmm_return_t
 vmm_cpu_set_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t value)
 {
   return VMM_ERROR;
+}
+
+vmm_return_t
+vmm_cpu_get_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries)
+{
+  struct vcpu_state_t state;
+  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  if (ret != VMM_SUCCESS)
+    return ret;
+  for (int i = 0; i < n_entries; i++) {
+    int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, false);
+    if (err != VMM_SUCCESS)
+      return err;
+  }
+  return VMM_SUCCESS;
+}
+
+vmm_return_t
+vmm_cpu_set_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries)
+{
+  struct vcpu_state_t state;
+  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  if (ret != VMM_SUCCESS)
+    return ret;
+  for (int i = 0; i < n_entries; i++) {
+    int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, true);
+    if (err != VMM_SUCCESS)
+      return err;
+  }
+  return hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
 }

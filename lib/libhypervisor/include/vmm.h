@@ -138,6 +138,11 @@ int EXTERN vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t va
 int EXTERN vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value);
 int EXTERN vmm_cpu_set_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t value);
 
+typedef struct {
+  vmm_x64_reg_t key;
+  uint64_t      val;
+} vmm_x64_reg_entry_t; 
+
 typedef const void *vmm_uvaddr_t;
 typedef uint64_t vmm_gpaddr_t;
 
@@ -168,6 +173,9 @@ int EXTERN vmm_memory_protect(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size, int pr
 int EXTERN vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_t size, int prot);
 int EXTERN vmm_memory_unmap(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size);
 int EXTERN vmm_memory_protect(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size, int prot);
+
+int EXTERN vmm_cpu_get_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries);
+int EXTERN vmm_cpu_set_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries);
 
 #endif
 
