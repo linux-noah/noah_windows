@@ -185,8 +185,27 @@ init_mm(struct mm *mm)
 }
 
 void
+restore_mm(struct mm *mm)
+{
+  for (auto entry : *mm->mm_regions) {
+    auto mm_region = entry.second;
+    void *haddr = mm_region_haddr(mm_region.get());
+#ifdef _WIN32
+    if (!mm_region->is_global) {
+      // Map the region from the inherited handles
+      // TODO: Make them read-only for CoW
+      platform_restore_mapped_mem(&haddr, mm_region->handle, mm_region->size, linux_to_native_mprot(mm_region->prot), MAP_FILE_PRIVATE | MAP_INHERIT);
+      mm_region->haddr = haddr;
+    }
+#endif
+    vm_mmap(mm_region->gaddr, mm_region->size, linux_to_native_mprot(mm_region->prot), haddr);
+  }
+}
+
+void
 clone_mm(struct mm *dst_mm, struct mm *src_mm)
 {
+  // TODO: make them read-only for CoW
   *dst_mm = *src_mm;
   pthread_rwlock_init(&dst_mm->alloc_lock, NULL);
 }

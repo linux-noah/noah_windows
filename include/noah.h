@@ -138,6 +138,7 @@ struct vkern {
   offset_ptr<procs_t> procs;
 };
 
+static const size_t vkern_shm_size = 0x100000;
 extern bip::managed_external_buffer *vkern_shm;
 extern struct vkern *vkern;
 

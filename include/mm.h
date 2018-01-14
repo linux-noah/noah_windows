@@ -69,6 +69,7 @@ void init_page();
 void init_segment();
 void init_mm(struct mm *mm);
 void init_mm(struct mm *mm, bool is_global);
+void restore_mm(struct mm *mm);
 void clone_mm(struct mm *dst_mm, struct mm *src_mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
@@ -116,5 +117,8 @@ int platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int pro
 int platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, int prot, int platform_mflags, off_t offset, const char *path);
 int platform_unmap_mem(void *mem, platform_handle_t handle, size_t size);
 int platform_free_filemapping(void *addr, platform_handle_t handle, size_t size);
+#ifdef _WIN32
+int platform_restore_mapped_mem(void **ret, platform_handle_t handle, size_t size, int prot, int platform_mflags);
+#endif
 
 #endif

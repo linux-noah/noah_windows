@@ -24,6 +24,7 @@
 #include "vm.h"
 #include "mm.h"
 #include "syscall.h"
+#include "proc.h"
 #include "linux/errno.h"
 #include "x86/irq_vectors.h"
 #include "x86/vm.h"
@@ -354,7 +355,7 @@ init_vkern_shm()
   if (err < 0) {
     abort();
   }
-  vkern_shm = new bip::managed_external_buffer(bip::create_only, buf, 0x1000000);
+  vkern_shm = new bip::managed_external_buffer(bip::create_only, buf, vkern_shm_size);
   return shm_handle;
 }
 
@@ -385,6 +386,14 @@ init_vkernel(const char *root)
   init_fpu();
 
   init_first_proc(root);
+}
+
+static void
+restore_vkernel(platform_handle_t shm_fd)
+{
+  vkern_shm = new bip::managed_external_buffer(bip::open_only, shm_fd, vkern_shm_size);
+  vkern = vkern_shm->find<struct vkern>("vkern").first;
+  restore_mm(vkern->mm.get());
 }
 
 void
@@ -454,6 +463,8 @@ main(int argc, char *argv[], char **envp)
     ("strace,s", po::value<std::string>(), "path meta strace file")
     ("warning,w", po::value<std::string>(), "path to warning log file")
     ("mnt,m", po::value<std::string>()->default_value("~/.noah/tree"), "path to root directory")
+    ("child,c", po::value<unsigned>(), "mark this process as a forked process and pass its pid")
+    ("shm_fd,f", po::value<uint64_t>(), "inherited shared memory handle")
     ("linux_bin,b", po::value<std::string>(), "path to the Linux ELF to execute");
   po::positional_options_description pos;
   pos.add("linux_bin", -1);
@@ -475,23 +486,29 @@ main(int argc, char *argv[], char **envp)
   create_vm();
   
   // TODO: realpath
-  init_vkernel(opts["mnt"].as<std::string>().c_str());
+  if (!opts.count("child")) {
+    init_vkernel(opts["mnt"].as<std::string>().c_str());
 
-  if (opts.count("output")) {
-    init_printk(opts["output"].as<std::string>().c_str());
-  }
-  if (opts.count("strace")) {
-    init_meta_strace(opts["strace"].as<std::string>().c_str());
-  }
-  if (opts.count("warning")) {
-    init_warnk(opts["warning"].as<std::string>().c_str());
-  }
+    if (opts.count("output")) {
+      init_printk(opts["output"].as<std::string>().c_str());
+    }
+    if (opts.count("strace")) {
+      init_meta_strace(opts["strace"].as<std::string>().c_str());
+    }
+    if (opts.count("warning")) {
+      init_warnk(opts["warning"].as<std::string>().c_str());
+    }
 
-  int err;
-  if ((err = do_exec(opts["linux_bin"].as<std::string>().c_str(), argc, argv, envp)) < 0) {
-    errno = linux_to_native_errno(-err);
-    perror("Error");
-    exit(1);
+    int err;
+    if ((err = do_exec(opts["linux_bin"].as<std::string>().c_str(), argc, argv, envp)) < 0) {
+      errno = linux_to_native_errno(-err);
+      perror("Error");
+      exit(1);
+    }
+
+  } else {
+    restore_vkernel(opts["shm_fd"].as<platform_handle_t>());
+    platform_restore_proc(opts["child"].as<unsigned>());
   }
 
   main_loop(0);

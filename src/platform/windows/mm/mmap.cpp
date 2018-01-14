@@ -30,6 +30,25 @@ prot_to_page_access(int prot, bool cow)
 }
 
 static inline int
+prot_to_filemap_access(int prot, bool cow)
+{
+  int w_acc = 0;
+  if (prot & PROT_WRITE) {
+    if (cow) {
+      w_acc = FILE_MAP_COPY;
+    } else {
+      w_acc = FILE_MAP_ALL_ACCESS;
+    }
+  } else {
+    w_acc = FILE_MAP_READ;
+  }
+  if (prot & PROT_EXEC) {
+    w_acc |= FILE_MAP_EXECUTE;
+  }
+  return w_acc;
+}
+
+static inline int
 prot_to_generic_access(int prot)
 {
   int gen_acc = 0;
@@ -41,7 +60,6 @@ prot_to_generic_access(int prot)
     gen_acc |= GENERIC_EXECUTE;
   return gen_acc;
 }
-
 
 int
 platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, int platform_mflags)
@@ -65,7 +83,7 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   }
   *handle = m;
 
-  *ret = MapViewOfFile(m, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  *ret = MapViewOfFile(m, prot_to_filemap_access(prot, false), 0, 0, size);
   if (*ret == NULL) {
     err = -native_to_linux_errno(errno);
     CloseHandle(m);
@@ -76,6 +94,27 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   return err;
 }
 
+int
+platform_restore_mapped_mem(void **ret, platform_handle_t m, size_t size, int prot, int platform_mflags)
+{
+  if (size == 0) {
+    return -LINUX_EINVAL;
+  }
+  if (!(prot & PROT_READ)) {
+    return -LINUX_EINVAL;
+  }
+
+  int err;
+  *ret = MapViewOfFile(m, prot_to_filemap_access(prot, false), 0, 0, size);
+  if (*ret == NULL) {
+    err = -native_to_linux_errno(errno);
+    CloseHandle(m);
+  } else {
+    err = size;
+  }
+
+  return err;
+}
 
 int
 platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, int prot, int platform_mflags, off_t offset, const char *path)
@@ -111,24 +150,13 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
     }
     size = (size_high << 32) | size_low;
   }
-  HANDLE m = CreateFileMapping(f, NULL, prot_to_page_access(prot, (platform_mflags & MAP_FILE_SHARED) != 0), size_high, size_low, NULL);
+  HANDLE m = CreateFileMapping(f, NULL, prot_to_page_access(prot, false), size_high, size_low, NULL);
   if (m == INVALID_HANDLE_VALUE) {
     goto out_close_file;
   }
   *handle = m;
 
-  assert(size_high == 0); // TODO
-  int w_acc;
-  if (prot & PROT_WRITE) {
-    if (platform_mflags & MAP_FILE_SHARED) {
-      w_acc = FILE_MAP_ALL_ACCESS;
-    } else {
-      w_acc = FILE_MAP_COPY;
-    }
-  } else {
-    w_acc = FILE_MAP_READ;
-  }
-  *ret = MapViewOfFile(m, w_acc, 0, offset, size_low);
+  *ret = MapViewOfFile(m, prot_to_filemap_access(prot, (platform_mflags & MAP_FILE_SHARED) == 0), 0, offset, size_low);
   if (*ret == NULL) {
     err = -native_to_linux_errno(_doserrno);
     CloseHandle(m);

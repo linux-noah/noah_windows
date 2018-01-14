@@ -13,11 +13,10 @@
 #include "noah.h"
 #include "syscall.h"
 #include "vmm.h"
+#include "proc.h"
 #include "linux/common.h"
 #include "linux/misc.h"
 #include "linux/signal.h"
-
-int platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls);
 
 int
 __do_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t parent_tid, gaddr_t child_tid, gaddr_t tls)
