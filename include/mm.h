@@ -51,15 +51,15 @@ struct mm_region {
 };
 
 struct mm {
-  using mm_regions_key_t  = std::pair<gaddr_t, gaddr_t>;
-  struct mm_regions_key_less {
-    bool operator()(const mm::mm_regions_key_t &r1, const mm::mm_regions_key_t &r2) const { return r1.second <= r2.first; };
+  using regions_key_t  = std::pair<gaddr_t, gaddr_t>;
+  struct regions_key_less {
+    bool operator()(const mm::regions_key_t &r1, const mm::regions_key_t &r2) const { return r1.second <= r2.first; };
   };
-  using mm_regions_t      = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, mm_regions_key_less>;
-  using mm_regions_iter_t = mm::mm_regions_t::iterator;
+  using regions_t      = extbuf_map_t<regions_key_t, offset_ptr<mm_region>, regions_key_less>;
+  using regions_iter_t = mm::regions_t::iterator;
 
-  offset_ptr<mm_regions_t> mm_regions;
-  bool                     is_global;  /* If true, the mappings are global */
+  offset_ptr<regions_t> regions;
+  bool                  is_global;  /* If true, the mappings are global */
 
   uint64_t start_brk, current_brk;
 
@@ -115,7 +115,7 @@ kalloc_aligned(T **ptr, int flags)
 
 int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
-std::pair<mm::mm_regions_iter_t, mm::mm_regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
+std::pair<mm::regions_iter_t, mm::regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
 struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
 std::pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
 

@@ -61,7 +61,7 @@ do_munmap(gaddr_t gaddr, size_t size)
     if (overlapping->gaddr + overlapping->size > gaddr + size) {
       overlapping = split_region(proc->mm.get(), overlapping, gaddr + size).first;
     }
-    proc->mm->mm_regions->erase(mm::mm_regions_key_t(overlapping->gaddr, overlapping->gaddr + overlapping->size));
+    proc->mm->regions->erase(mm::regions_key_t(overlapping->gaddr, overlapping->gaddr + overlapping->size));
     vm_munmap(overlapping->gaddr, overlapping->size);
     platform_unmap_mem(mm_region_haddr(overlapping), overlapping->handle, overlapping->size);
     vkern_shm->destroy_ptr<mm_region>(cur->second.get());
