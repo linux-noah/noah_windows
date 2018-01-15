@@ -126,9 +126,12 @@ using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const 
 
 struct vkern {
   using procs_t = extbuf_map_t<unsigned, offset_ptr<struct proc>>;
+  using msrs_t = extbuf_map_t<uint32_t, uint64_t>;
 
   platform_handle_t shm_handle;
   offset_ptr<extbuf_allocator_t<void>> shm_allocator;
+
+  offset_ptr<msrs_t> msrs;
 
   // Manage kernel memory space allocated by kmap.
   // Some members related to user memory space such as start_brk are meaningless in this.

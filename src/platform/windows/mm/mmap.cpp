@@ -1,4 +1,3 @@
-
 #include <cerrno>
 #include <Windows.h>
 #include <boost/interprocess/file_mapping.hpp>
@@ -76,16 +75,16 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   sec.lpSecurityDescriptor = NULL;
   sec.bInheritHandle = (platform_mflags & MAP_INHERIT) != 0;
   int err;
-  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, prot_to_page_access(prot, false),
+  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, prot_to_page_access(PROT_READ | PROT_WRITE | PROT_EXEC, false),
     static_cast<unsigned long>(size >> 32), static_cast<unsigned long>(size), NULL);
   if (m == INVALID_HANDLE_VALUE) {
     return -LINUX_ENOMEM;
   }
   *handle = m;
 
-  *ret = MapViewOfFile(m, prot_to_filemap_access(prot, false), 0, 0, size);
+  *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
-    err = -native_to_linux_errno(errno);
+    err = -winnative_to_linux_errno(GetLastError());
     CloseHandle(m);
   } else {
     err = size;
@@ -105,10 +104,9 @@ platform_restore_mapped_mem(void **ret, platform_handle_t m, size_t size, int pr
   }
 
   int err;
-  *ret = MapViewOfFile(m, prot_to_filemap_access(prot, false), 0, 0, size);
+  *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
-    err = -native_to_linux_errno(errno);
-    CloseHandle(m);
+    err = -winnative_to_linux_errno(GetLastError());
   } else {
     err = size;
   }
@@ -137,7 +135,7 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
   HANDLE f = CreateFile(path, prot_to_generic_access(prot), FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     NULL, OPEN_EXISTING, FILE_FLAG_POSIX_SEMANTICS, &sec);
   if (f == INVALID_HANDLE_VALUE) {
-    err = -native_to_linux_errno(_doserrno);
+    err = -winnative_to_linux_errno(GetLastError());
     goto out_close_file;
   }
 
@@ -145,7 +143,7 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
   if (size == -1) { // Treat as equivalent to the file size
     size_low = GetFileSize(f, &size_high);
     if (size_low == INVALID_FILE_SIZE) {
-      err = -native_to_linux_errno(_doserrno);
+      err = -winnative_to_linux_errno(GetLastError());
       goto out_close_file;
     }
     size = (size_high << 32) | size_low;
@@ -158,7 +156,7 @@ platform_alloc_filemapping(void **ret, platform_handle_t *handle, ssize_t size, 
 
   *ret = MapViewOfFile(m, prot_to_filemap_access(prot, (platform_mflags & MAP_FILE_SHARED) == 0), 0, offset, size_low);
   if (*ret == NULL) {
-    err = -native_to_linux_errno(_doserrno);
+    err = -winnative_to_linux_errno(GetLastError());
     CloseHandle(m);
     goto out_close_file;
   }

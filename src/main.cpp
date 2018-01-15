@@ -185,6 +185,8 @@ main_loop(int return_on_sigret)
     case VMM_EXIT_SHUTDOWN: {
       uint64_t native_exit_reason = 0;
       get_vcpu_control_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
+      uint64_t rip;
+      read_register(VMM_X64_RIP, &rip);
       // TODO: Define Basic exit reason constants in libhv
       printk("Unexpected VMM_EXIT_SHUTDOWN\n");
       abort();
@@ -208,6 +210,14 @@ main_loop(int return_on_sigret)
   UNREACHABLE();
 }
 
+// MSRs set by this function will be restored in restore_vkernel
+void
+vkern_set_msr(uint32_t reg, uint64_t value)
+{
+  (*vkern->msrs)[reg] = value;
+  write_msr(reg, value);
+}
+
 void
 init_special_regs()
 {
@@ -223,7 +233,7 @@ init_special_regs()
   read_register(VMM_X64_EFER, &efer);
   efer |= EFER_LME | EFER_LMA | EFER_NX;
   write_register(VMM_X64_EFER, efer);
-  write_msr(MSR_IA32_EFER, efer);
+  vkern_set_msr(MSR_IA32_EFER, efer);
 }
 
 TYPEDEF_PAGE_ALIGNED(struct gate_desc) gate_desc_t[256];
@@ -257,10 +267,9 @@ init_idt()
   // Set up syscall and interrupt trampolines
   static const uint8_t OP_HLT = '\xf4';
   uint64_t efer;
-  read_register(VMM_X64_EFER, &efer);
+  read_msr(MSR_IA32_EFER, &efer);
   efer |= EFER_SCE;
-  write_register(VMM_X64_EFER, efer);
-  write_msr(MSR_IA32_EFER, efer);
+  vkern_set_msr(MSR_IA32_EFER, efer);
 
   err = platform_map_mem(reinterpret_cast<void **>(&syscall_entry), &handle, sizeof(syscall_entry_t), PROT_READ | PROT_WRITE, platform_mflags);
   if (err < 0) {
@@ -268,10 +277,10 @@ init_idt()
   }
   (*syscall_entry)[0] = OP_HLT;
   syscall_entry_addr = kmap(syscall_entry, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
-  write_msr(MSR_IA32_LSTAR, syscall_entry_addr);
-  write_msr(MSR_IA32_FMASK, 0);
-  write_msr(MSR_IA32_FMASK, 0);
-  write_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
+  vkern_set_msr(MSR_IA32_LSTAR, syscall_entry_addr);
+  vkern_set_msr(MSR_IA32_FMASK, 0);
+  vkern_set_msr(MSR_IA32_FMASK, 0);
+  vkern_set_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
 
   err = platform_map_mem(reinterpret_cast<void **>(&exception_entry), &handle, sizeof(exception_entry), PROT_READ | PROT_WRITE, platform_mflags);
   if (err < 0) {
@@ -351,13 +360,16 @@ init_vkern_shm()
   const int platform_mflags = MAP_SHARED | MAP_ANONYMOUS;
 #endif
   void *buf;
-  int err = platform_map_mem(&buf, &shm_handle, 0x1000000, PROT_READ | PROT_WRITE | PROT_EXEC, platform_mflags);
+  int err = platform_map_mem(&buf, &shm_handle, vkern_shm_size + PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE | PROT_EXEC, platform_mflags);
   if (err < 0) {
     abort();
   }
-  vkern_shm = new bip::managed_external_buffer(bip::create_only, buf, vkern_shm_size);
+  *reinterpret_cast<unsigned *>(buf) = 0xdeadbeef; // A guard to check the memory is successfully shared
+  vkern_shm = new bip::managed_external_buffer(bip::create_only, (char *)buf + PAGE_SIZE(PAGE_4KB), vkern_shm_size);
   return shm_handle;
 }
+
+class Dummy {};
 
 void
 init_vkern_struct()
@@ -367,6 +379,7 @@ init_vkern_struct()
   vkern->shm_handle = shm_handle;
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
+  vkern->msrs = vkern_shm->construct<vkern::msrs_t>(bip::anonymous_instance)(*vkern->shm_allocator);
   vkern->mm = vkern_shm->construct<mm>(bip::anonymous_instance)();
   vkern->next_pid = 2;
   vkern->procs = vkern_shm->construct<vkern::procs_t>
@@ -388,12 +401,20 @@ init_vkernel(const char *root)
   init_first_proc(root);
 }
 
-static void
+void
 restore_vkernel(platform_handle_t shm_fd)
 {
-  vkern_shm = new bip::managed_external_buffer(bip::open_only, shm_fd, vkern_shm_size);
-  vkern = vkern_shm->find<struct vkern>("vkern").first;
+#ifdef _WIN32
+  void *buf;
+  /*platform_restore_mapped_mem(&buf, shm_fd, vkern_shm_size + PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_INHERIT);
+  assert(*reinterpret_cast<int *>(buf) == 0xdeadbeef); // Check the guard's value
+  vkern_shm = new bip::managed_external_buffer(bip::open_only, (char *)buf + PAGE_SIZE(PAGE_4KB), vkern_shm_size);
+  vkern = vkern_shm->find<struct vkern>("vkern").first;*/
+#endif
   restore_mm(vkern->mm.get());
+  for (auto entry : *vkern->msrs) {
+    write_msr(entry.first, entry.second);
+  }
 }
 
 void
@@ -507,7 +528,7 @@ main(int argc, char *argv[], char **envp)
     }
 
   } else {
-    restore_vkernel(opts["shm_fd"].as<platform_handle_t>());
+    restore_vkernel(reinterpret_cast<platform_handle_t>(opts["shm_fd"].as<uint64_t>()));
     platform_restore_proc(opts["child"].as<unsigned>());
   }
 

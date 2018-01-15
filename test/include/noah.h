@@ -17,6 +17,7 @@ uint64_t syscall(uint64_t num, uint64_t rdi, uint64_t rsi, uint64_t rdx)
 #define SYS_write 1
 #define SYS_open 2
 #define SYS_close 3
+#define SYS_fork 57
 #define SYS_exit 60
 #define SYS_rename 82
 
@@ -45,6 +46,11 @@ int rename(const char *oldpath, const char *newpath)
 int close(unsigned int fd)
 {
   return syscall(SYS_close, fd, 0, 0);
+}
+
+int fork()
+{
+    return syscall(SYS_fork, 0, 0, 0);
 }
 
 void _exit(int status)

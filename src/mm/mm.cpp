@@ -188,13 +188,20 @@ void
 restore_mm(struct mm *mm)
 {
   for (auto entry : *mm->mm_regions) {
-    auto mm_region = entry.second;
-    void *haddr = mm_region_haddr(mm_region.get());
+    auto mm_region = entry.second.get();
+    void *haddr = mm_region_haddr(mm_region);
+    int val = *(int*)haddr;
 #ifdef _WIN32
     if (!mm_region->is_global) {
       // Map the region from the inherited handles
       // TODO: Make them read-only for CoW
-      platform_restore_mapped_mem(&haddr, mm_region->handle, mm_region->size, linux_to_native_mprot(mm_region->prot), MAP_FILE_PRIVATE | MAP_INHERIT);
+      int n_prot = linux_to_native_mprot(mm_region->prot) & ~(PROT_EXEC);
+      int err = platform_restore_mapped_mem(&haddr, mm_region->handle, mm_region->size, n_prot, MAP_FILE_PRIVATE | MAP_INHERIT);
+      assert(err >= 0);
+      int i;
+      for (i = 0; i < mm_region->size / sizeof(int); i++) {
+        assert(*((int*)mm_region->haddr+i) == *((int*)haddr+i));
+      }
       mm_region->haddr = haddr;
     }
 #endif

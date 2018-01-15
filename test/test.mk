@@ -7,10 +7,10 @@ LINUX_BUILD_SERV ?= idylls.jp
 
 test: $(TEST_UPROGS)
 
-test_stdout/build/hello_static: test_stdout/hello.c include/*.h
+test_stdout/build/%_static: test_stdout/%_static.c include/*.h
 	CFLAGS=--static;\
 	$(MAKE_TEST_UPROGS)
-test_stdout/build/hello_nolibc: test_stdout/hello_nolibc.c include/noah.S include/*.h
+test_stdout/build/%_nolibc: test_stdout/%_nolibc.c include/noah.S include/*.h
 	CFLAGS="--static -nostdlib";\
 	$(MAKE_TEST_UPROGS)
 
