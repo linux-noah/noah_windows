@@ -512,6 +512,8 @@ vmm_cpu_get_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, 
   if (ret != VMM_SUCCESS)
     return ret;
   for (int i = 0; i < n_entries; i++) {
+    if (entries[i].key == VMM_X64_NO_REGISTER)
+      continue;
     int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, false);
     if (err != VMM_SUCCESS)
       return err;
@@ -527,6 +529,8 @@ vmm_cpu_set_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, 
   if (ret != VMM_SUCCESS)
     return ret;
   for (int i = 0; i < n_entries; i++) {
+    if (entries[i].key == VMM_X64_NO_REGISTER)
+      continue;
     int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, true);
     if (err != VMM_SUCCESS)
       return err;

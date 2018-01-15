@@ -98,6 +98,7 @@ typedef enum {
   VMM_X64_TPR,
   VMM_X64_XCR0,
   VMM_X64_REGISTERS_MAX,
+  VMM_X64_NO_REGISTER = -1, // Used to indicate no entry in vmm_x64_reg_entry_t
 } vmm_x64_reg_t;
 
 enum {
