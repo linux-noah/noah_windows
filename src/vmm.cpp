@@ -105,6 +105,7 @@ destroy_vm()
     panic("could not destroy the vm: error code %x", ret);
     exit(1);
   }
+  vcpu = NULL;
 
   printk("successfully destroyed the vm\n");
 }
