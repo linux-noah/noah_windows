@@ -275,7 +275,8 @@ struct hax_alloc_ram_info
   uint64_t va;
 };
 
-#define HAX_RAM_INFO_ROM 0x1
+#define HAX_RAM_INFO_ROM     0x01
+#define HAX_RAM_INFO_INVALID 0x80
 struct hax_set_ram_info
 {
   uint64_t pa_start;

@@ -271,20 +271,22 @@ vmm_destroy(vmm_vm_t vm)
 vmm_return_t
 vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_t size, int prot)
 {
+  if (!(prot & PROT_READ))
+    return VMM_EINVAL;
   vmm_return_t err;
   err = hax_alloc_ram(vm->vmfd, (uint64_t)uva, size);
   if (err < 0)
     return err;
-  err = hax_map_region(vm->vmfd, (uint64_t)uva, gpa, size, 0);
-  if (err < 0)
-    return err;
-  return VMM_SUCCESS;
+  int flags = 0;
+  if (!(prot & PROT_WRITE))
+    flags = HAX_RAM_INFO_ROM;
+  return hax_map_region(vm->vmfd, (uint64_t)uva, gpa, size, flags);
 }
 
 vmm_return_t
 vmm_memory_unmap(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size) 
 {
-  return VMM_ERROR;
+  return hax_map_region(vm->vmfd, 0, gpa, size, HAX_RAM_INFO_INVALID);
 }
 
 vmm_return_t
