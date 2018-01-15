@@ -24,7 +24,7 @@
 #include "linux/mman.h"
 
 void
-init_mmap(struct mm *mm)
+init_mmap(struct proc_mm *mm)
 {
   mm->current_mmap_top = 0x00000000c0000000;
 }

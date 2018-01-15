@@ -22,8 +22,6 @@
 namespace bip = boost::interprocess;
 
 
-void init_mmap(struct mm *mm);
-
 const gaddr_t user_addr_max = 0x0000007fc0000000ULL;
 
 gaddr_t
@@ -46,41 +44,40 @@ kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) pe_t[NR_PAGE_ENTRY];
-pe_t *pml4;
-gaddr_t pml4_ptr;
-pe_t *pdp;
-gaddr_t pdp_ptr;
 
 void
 init_page()
 {
-  pml4_ptr = kalloc_aligned(&pml4, PROT_READ | PROT_WRITE);
-  pdp_ptr = kalloc_aligned(&pdp, PROT_READ | PROT_WRITE);
+  pe_t *pml4;
+  pe_t *pdp;
+  gaddr_t pdp_addr;
+
+  vkern->mm->pml4_addr = kalloc_aligned(&pml4, PROT_READ | PROT_WRITE);
+  pdp_addr = kalloc_aligned(&pdp, PROT_READ | PROT_WRITE);
   
   // Straight mapping
-  (*pml4)[0] = (pdp_ptr & 0x000ffffffffff000ul) | PTE_U | PTE_W | PTE_P;
+  (*pml4)[0] = (pdp_addr & 0x000ffffffffff000ul) | PTE_U | PTE_W | PTE_P;
   for (int i = 0; i < NR_PAGE_ENTRY; i++) {
     (*pdp)[i] = (0x40000000ULL * i) | PTE_PS | PTE_U | PTE_W | PTE_P;
   }
   (*pdp)[NR_PAGE_ENTRY - 1] &= ~PTE_U; // the region that kmap manages
 
   write_register(VMM_X64_CR0, CR0_PG | CR0_PE | CR0_NE);
-  write_register(VMM_X64_CR3, pml4_ptr);
+  write_register(VMM_X64_CR3, vkern->mm->pml4_addr);
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) gdt_t[3];
-gdt_t *gdt;
-gaddr_t gdt_ptr;
 
 void
 init_segment()
 {
-  gdt_ptr = kalloc_aligned(&gdt, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
+  gdt_t *gdt;
+  vkern->mm->gdt_addr = kalloc_aligned(&gdt, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   (*gdt)[SEG_NULL] = 0;
   (*gdt)[SEG_CODE] = 0x0020980000000000;
   (*gdt)[SEG_DATA] = 0x0000900000000000;
 
-  write_register(VMM_X64_GDT_BASE, gdt_ptr);
+  write_register(VMM_X64_GDT_BASE, vkern->mm->gdt_addr);
   write_register(VMM_X64_GDT_LIMIT, 3 * 8 - 1);
 
   write_register(VMM_X64_TR, 0);
@@ -139,22 +136,39 @@ init_segment()
   write_register(VMM_X64_LDTR, 0);
 }
 
-void
-init_mm(struct mm *mm, bool is_global)
+mm::mm(bool is_global) :
+  is_global(is_global)
 {
-  memset(mm, 0, sizeof(struct mm));
-  init_mmap(mm);
-  mm->mm_regions =
+  mm_regions =
     vkern_shm->construct<mm::mm_regions_t>
     (bip::anonymous_instance)([](auto r1, auto r2) {return r1.second <= r2.first;}, *vkern->shm_allocator);
-  mm->is_global = is_global;
-  pthread_rwlock_init(&mm->alloc_lock, NULL);
+  pthread_rwlock_init(&alloc_lock, NULL);
 }
 
-void
-init_mm(struct mm *mm)
+mm::~mm()
 {
-  init_mm(mm, false);
+  for (auto cur : *mm_regions) {
+    auto r = cur.second.get();
+    platform_unmap_mem(mm_region_haddr(r), r->handle, r->size);
+    vm_munmap(r->gaddr, r->size);
+    vkern_shm->destroy_ptr<mm_region>(r);
+  }
+  vkern_shm->destroy_ptr<mm::mm_regions_t>(mm_regions.get());
+  mm_regions = 0;
+}
+
+vkern_mm::vkern_mm() :
+  mm(true)
+{
+  start_brk = user_addr_max;
+  current_brk = user_addr_max;
+}
+
+void init_mmap(struct proc_mm *mm);
+
+proc_mm::proc_mm()
+{
+  init_mmap(this);
 }
 
 void
@@ -163,7 +177,6 @@ restore_mm(struct mm *mm)
   for (auto entry : *mm->mm_regions) {
     auto mm_region = entry.second.get();
     void *haddr = mm_region_haddr(mm_region);
-    int val = *(int*)haddr;
 #ifdef _WIN32
     if (!mm_region->is_global) {
       // Map the region from the inherited handles
@@ -171,10 +184,6 @@ restore_mm(struct mm *mm)
       int n_prot = linux_to_native_mprot(mm_region->prot) & ~(PROT_EXEC);
       int err = platform_restore_mapped_mem(&haddr, mm_region->handle, mm_region->size, n_prot, MAP_FILE_PRIVATE | MAP_INHERIT);
       assert(err >= 0);
-      int i;
-      for (i = 0; i < mm_region->size / sizeof(int); i++) {
-        assert(*((int*)mm_region->haddr+i) == *((int*)haddr+i));
-      }
       mm_region->haddr = haddr;
     }
 #endif
@@ -188,19 +197,6 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
   // TODO: make them read-only for CoW
   *dst_mm = *src_mm;
   pthread_rwlock_init(&dst_mm->alloc_lock, NULL);
-}
-
-void
-destroy_mm(struct mm *mm)
-{
-  for (auto cur : *mm->mm_regions) {
-    auto r = cur.second.get();
-    platform_unmap_mem(mm_region_haddr(r), r->handle, r->size);
-    vm_munmap(r->gaddr, r->size);
-    vkern_shm->destroy_ptr<mm_region>(r);
-  }
-  vkern_shm->destroy_ptr<mm::mm_regions_t>(mm->mm_regions.get());
-  mm->mm_regions = 0;
 }
 
 void *

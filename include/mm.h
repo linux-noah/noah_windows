@@ -56,20 +56,41 @@ struct mm {
   using mm_regions_iter_t = mm::mm_regions_t::iterator;
 
   offset_ptr<mm_regions_t> mm_regions;
-  bool                     is_global;  /* If true, the mappings are global and stored in vkern_shm */
+  bool                     is_global;  /* If true, the mappings are global */
 
   uint64_t start_brk, current_brk;
-  uint64_t current_mmap_top;
 
   pthread_rwlock_t alloc_lock;
+
+public:
+  mm(bool is_glboal);
+  mm() : mm(false) {};
+  virtual ~mm();
+};
+
+struct proc_mm : public mm {
+  uint64_t current_mmap_top;
+
+public:
+  proc_mm();
+};
+
+
+struct vkern_mm : public mm {
+  gaddr_t exception_entry_addr;
+  gaddr_t syscall_entry_addr;
+  gaddr_t gdt_addr;
+  gaddr_t idt_addr;
+  gaddr_t pml4_addr;
+
+public:
+  vkern_mm();
 };
 
 extern const gaddr_t user_addr_max;
 
 void init_page();
 void init_segment();
-void init_mm(struct mm *mm);
-void init_mm(struct mm *mm, bool is_global);
 void restore_mm(struct mm *mm);
 void clone_mm(struct mm *dst_mm, struct mm *src_mm);
 
@@ -93,7 +114,6 @@ struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
 std::pair<mm::mm_regions_iter_t, mm::mm_regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
 struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
 std::pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
-void destroy_mm(struct mm *mm);
 
 bool is_region_private(struct mm_region*);
 void *mm_region_haddr(struct mm_region*);

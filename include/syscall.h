@@ -675,7 +675,7 @@
 
 typedef uint64_t (*sc_handler_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
-extern sc_handler_t sc_handler_table[NR_SYSCALLS];
-extern char *sc_name_table[NR_SYSCALLS];
+extern const sc_handler_t sc_handler_table[NR_SYSCALLS];
+extern const char * sc_name_table[NR_SYSCALLS];
 
 #endif

@@ -26,7 +26,7 @@ clone_proc(struct proc *dst_proc, struct proc *src_proc)
 {
   *dst_proc = *src_proc;
   dst_proc->pid = vkern->next_pid++;
-  dst_proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
+  dst_proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
   clone_mm(dst_proc->mm.get(), src_proc->mm.get());
   dst_proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
   // TODO: Copy the all left. Leave it later assuming currently 
@@ -62,14 +62,14 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   memset(&strtup_info, 0, sizeof(strtup_info));
   strtup_info.cb = sizeof(strtup_info);
   PROCESS_INFORMATION proc_info;
-  /*auto succ = CreateProcess(bin, new_cmd_cstr, &sec, &sec, true, 0, NULL, NULL, &strtup_info, &proc_info);
+  auto succ = CreateProcess(bin, new_cmd_cstr, &sec, &sec, true, 0, NULL, NULL, &strtup_info, &proc_info);
   if (!succ) {
     return -LINUX_EINVAL; // TODO
   }
   write_register(VMM_X64_RAX, new_proc->pid);
   _sleep(5);
   _exit(0); // To test the cloned process does the left things
-  */
+  /*
   destroy_vm();
   create_vm();
   restore_vkernel(reinterpret_cast<platform_handle_t>(vkern->shm_handle));
@@ -78,6 +78,7 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   auto state = proc->vcpu_state.get();
 
   main_loop(0);
+  */
 
   return 0;
 }

@@ -25,13 +25,13 @@ SYSCALLS
 #undef SYSCALL
 #undef _sys_unimplemented
 
-sc_handler_t sc_handler_table[NR_SYSCALLS] = {
+const sc_handler_t sc_handler_table[NR_SYSCALLS] = {
 #define SYSCALL(n, name) (sc_handler_t) _sys_##name,
   SYSCALLS
 #undef SYSCALL
 };
 
-char *sc_name_table[NR_SYSCALLS] = {
+const char *sc_name_table[NR_SYSCALLS] = {
 #define SYSCALL(n, name) #name,
   SYSCALLS
 #undef SYSCALL
