@@ -68,10 +68,10 @@ struct mm {
 public:
   mm(bool is_glboal);
   mm() : mm(false) {};
-  ~mm();
+  virtual ~mm();
 };
 
-struct proc_mm {
+struct proc_mm : public mm {
   uint64_t current_mmap_top;
 
 public:
@@ -79,8 +79,7 @@ public:
 };
 
 
-struct vkern_mm {
-  offset_ptr<struct mm> mm;
+struct vkern_mm : public mm {
   gaddr_t exception_entry_addr;
   gaddr_t syscall_entry_addr;
   gaddr_t gdt_addr;
@@ -88,7 +87,7 @@ struct vkern_mm {
   gaddr_t pml4_addr;
 
 public:
-  vkern_mm(offset_ptr<struct mm> mm);
+  vkern_mm();
 };
 
 extern const gaddr_t user_addr_max;

@@ -100,7 +100,7 @@ main_loop(int return_on_sigret)
     case VMM_EXIT_HLT: {
       uint64_t rip;
       read_register(VMM_X64_RIP, &rip);
-      if (rip - 1 == vkern->k_mm->syscall_entry_addr) {
+      if (rip - 1 == vkern->mm->syscall_entry_addr) {
         uint64_t rcx;
         read_register(VMM_X64_RCX, &rcx);
         write_register(VMM_X64_RIP, rcx); // Set RIP to the next instruction of syscall
@@ -244,10 +244,10 @@ init_idt()
   exception_entry_t *exception_entry;
   gate_desc_t *idt;
 
-  vkern->k_mm->idt_addr = kalloc_aligned(&idt, PROT_READ | PROT_WRITE, 
+  vkern->mm->idt_addr = kalloc_aligned(&idt, PROT_READ | PROT_WRITE, 
     roundup(sizeof(*idt), PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB));
 
-  write_register(VMM_X64_IDT_BASE, vkern->k_mm->idt_addr);
+  write_register(VMM_X64_IDT_BASE, vkern->mm->idt_addr);
   write_register(VMM_X64_IDT_LIMIT, sizeof idt);
 
 #ifdef _WIN32
@@ -258,14 +258,14 @@ init_idt()
   efer |= EFER_SCE;
   vkern_set_msr(MSR_IA32_EFER, efer);
 
-  vkern->k_mm->syscall_entry_addr = kalloc_aligned(&syscall_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
+  vkern->mm->syscall_entry_addr = kalloc_aligned(&syscall_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   (*syscall_entry)[0] = OP_HLT;
-  vkern_set_msr(MSR_IA32_LSTAR, vkern->k_mm->syscall_entry_addr);
+  vkern_set_msr(MSR_IA32_LSTAR, vkern->mm->syscall_entry_addr);
   vkern_set_msr(MSR_IA32_FMASK, 0);
   vkern_set_msr(MSR_IA32_FMASK, 0);
   vkern_set_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
 
-  vkern->k_mm->exception_entry_addr = kalloc_aligned(&exception_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
+  vkern->mm->exception_entry_addr = kalloc_aligned(&exception_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   for (int i = 0; i < 256; i++) {
     (*exception_entry)[i] = OP_HLT;
     // Set idt[i] to there
@@ -296,8 +296,7 @@ init_first_proc(const char *root)
   proc->pid = vkern->next_pid++;
   proc->nr_tasks = 1;
   pthread_rwlock_init(&proc->lock, NULL);
-  proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
-  proc->p_mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
+  proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
   INIT_LIST_HEAD(&proc->tasks);
   list_add(&task.head, &proc->tasks);
   proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
@@ -359,8 +358,7 @@ init_vkern_struct()
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
   vkern->msrs = vkern_shm->construct<vkern::msrs_t>(bip::anonymous_instance)(*vkern->shm_allocator);
-  vkern->mm = vkern_shm->construct<mm>(bip::anonymous_instance)();
-  vkern->k_mm = vkern_shm->construct<vkern_mm>(bip::anonymous_instance)(vkern->mm);
+  vkern->mm = vkern_shm->construct<vkern_mm>(bip::anonymous_instance)();
   vkern->next_pid = 2;
   vkern->procs = vkern_shm->construct<vkern::procs_t>
                               (bip::anonymous_instance)(*vkern->shm_allocator);

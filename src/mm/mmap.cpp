@@ -33,8 +33,8 @@ gaddr_t
 alloc_region(size_t len)
 {
   len = roundup(len, PAGE_SIZE(PAGE_4KB));
-  proc->p_mm->current_mmap_top += len;
-  return proc->p_mm->current_mmap_top - len;
+  proc->mm->current_mmap_top += len;
+  return proc->mm->current_mmap_top - len;
 }
 
 int

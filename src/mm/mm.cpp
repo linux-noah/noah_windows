@@ -50,7 +50,7 @@ init_page()
   pe_t *pdp;
   gaddr_t pdp_addr;
 
-  vkern->k_mm->pml4_addr = kalloc_aligned(&pml4, PROT_READ | PROT_WRITE);
+  vkern->mm->pml4_addr = kalloc_aligned(&pml4, PROT_READ | PROT_WRITE);
   pdp_addr = kalloc_aligned(&pdp, PROT_READ | PROT_WRITE);
   
   // Straight mapping
@@ -61,7 +61,7 @@ init_page()
   (*pdp)[NR_PAGE_ENTRY - 1] &= ~PTE_U; // the region that kmap manages
 
   write_register(VMM_X64_CR0, CR0_PG | CR0_PE | CR0_NE);
-  write_register(VMM_X64_CR3, vkern->k_mm->pml4_addr);
+  write_register(VMM_X64_CR3, vkern->mm->pml4_addr);
 }
 
 TYPEDEF_PAGE_ALIGNED(uint64_t) gdt_t[3];
@@ -70,12 +70,12 @@ void
 init_segment()
 {
   gdt_t *gdt;
-  vkern->k_mm->gdt_addr = kalloc_aligned(&gdt, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
+  vkern->mm->gdt_addr = kalloc_aligned(&gdt, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   (*gdt)[SEG_NULL] = 0;
   (*gdt)[SEG_CODE] = 0x0020980000000000;
   (*gdt)[SEG_DATA] = 0x0000900000000000;
 
-  write_register(VMM_X64_GDT_BASE, vkern->k_mm->gdt_addr);
+  write_register(VMM_X64_GDT_BASE, vkern->mm->gdt_addr);
   write_register(VMM_X64_GDT_LIMIT, 3 * 8 - 1);
 
   write_register(VMM_X64_TR, 0);
@@ -135,11 +135,11 @@ init_segment()
 }
 
 mm::mm(bool is_global) :
-  is_global(is_global)
+  is_global(is_global), 
+  regions(vkern_shm->construct<mm::regions_t>
+    (bip::anonymous_instance)(mm::regions_key_less(), *vkern->shm_allocator)
+  )
 {
-  regions =
-    vkern_shm->construct<mm::regions_t>
-    (bip::anonymous_instance)(mm::regions_key_less(), *vkern->shm_allocator);
   pthread_rwlock_init(&alloc_lock, NULL);
 }
 
@@ -155,12 +155,11 @@ mm::~mm()
   regions = 0;
 }
 
-vkern_mm::vkern_mm(offset_ptr<struct mm> mm) :
-  mm(mm)
+vkern_mm::vkern_mm() :
+  mm(true)
 {
-  mm->is_global = true;
-  mm->start_brk = user_addr_max;
-  mm->current_brk = user_addr_max;
+  start_brk = user_addr_max;
+  current_brk = user_addr_max;
 }
 
 void init_mmap(struct proc_mm *mm);
