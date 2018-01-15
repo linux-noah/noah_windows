@@ -225,10 +225,22 @@ get_vcpu_control_state(int id, uint64_t *val)
   }
 }
 
+static inline void
+fill_all_keys(struct vcpu_state *state)
+{
+  for (int i = 0; i < VMM_X64_EFER + 1; i++) {
+    if (i == VMM_X64_CR1 || i == VMM_X64_CR8)
+      state->regs[i].key = VMM_X64_NO_REGISTER;
+    else
+      state->regs[i].key = static_cast<vmm_x64_reg_t>(i);
+  }
+}
+
 void
 get_vcpu_state(struct vcpu_state *state)
 {
-  if (vmm_cpu_get_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_REGISTERS_MAX) != VMM_SUCCESS) {
+  fill_all_keys(state);
+  if (vmm_cpu_get_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_CR8) != VMM_SUCCESS) {
     fprintf(stderr, "get_vcpu_state failed\n");
     abort();
   }
@@ -237,7 +249,8 @@ get_vcpu_state(struct vcpu_state *state)
 void
 set_vcpu_state(struct vcpu_state *state)
 {
-  if (vmm_cpu_set_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_REGISTERS_MAX) != VMM_SUCCESS) {
+  fill_all_keys(state);
+  if (vmm_cpu_set_registers(vm, vcpu->vcpuid, state->regs, VMM_X64_CR8) != VMM_SUCCESS) {
     fprintf(stderr, "set_vcpu_state failed\n");
     abort();
   }
