@@ -104,7 +104,8 @@ struct proc {
   pthread_rwlock_t lock;
   unsigned pid;
   struct cred cred;
-  offset_ptr<struct proc_mm> mm;
+  offset_ptr<struct mm> mm;
+  offset_ptr<struct proc_mm> p_mm;
   struct {
     pthread_rwlock_t sig_lock;
     // l_sigaction_t sigaction[LINUX_NSIG];
@@ -135,7 +136,8 @@ struct vkern {
 
   // Manage kernel memory space allocated by kmap.
   // Some members related to user memory space such as start_brk are meaningless in this.
-  offset_ptr<struct vkern_mm> mm;
+  offset_ptr<struct mm> mm;
+  offset_ptr<struct vkern_mm> k_mm;
 
   unsigned next_pid;
   offset_ptr<procs_t> procs;

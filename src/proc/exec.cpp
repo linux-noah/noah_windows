@@ -376,7 +376,9 @@ prepare_newproc(void)
   /* Not handling locks seriously now because multi-thread execve is not implemented yet */
   proc->nr_tasks = 1;
   vkern_shm->destroy_ptr(proc->mm.get());
-  proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
+  proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
+  vkern_shm->destroy_ptr(proc->p_mm.get());
+  proc->p_mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
   init_reg_state();
   // reset_signal_state();
   // TODO: destroy LDT if it is implemented

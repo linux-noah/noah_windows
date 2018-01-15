@@ -52,7 +52,10 @@ struct mm_region {
 
 struct mm {
   using mm_regions_key_t  = std::pair<gaddr_t, gaddr_t>;
-  using mm_regions_t      = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, std::function<bool(mm_regions_key_t, mm_regions_key_t)>>;
+  struct mm_regions_key_less {
+    bool operator()(const mm::mm_regions_key_t &r1, const mm::mm_regions_key_t &r2) const { return r1.second <= r2.first; };
+  };
+  using mm_regions_t      = extbuf_map_t<mm_regions_key_t, offset_ptr<mm_region>, mm_regions_key_less>;
   using mm_regions_iter_t = mm::mm_regions_t::iterator;
 
   offset_ptr<mm_regions_t> mm_regions;
@@ -65,10 +68,10 @@ struct mm {
 public:
   mm(bool is_glboal);
   mm() : mm(false) {};
-  virtual ~mm();
+  ~mm();
 };
 
-struct proc_mm : public mm {
+struct proc_mm {
   uint64_t current_mmap_top;
 
 public:
@@ -76,7 +79,8 @@ public:
 };
 
 
-struct vkern_mm : public mm {
+struct vkern_mm {
+  offset_ptr<struct mm> mm;
   gaddr_t exception_entry_addr;
   gaddr_t syscall_entry_addr;
   gaddr_t gdt_addr;
@@ -84,7 +88,7 @@ struct vkern_mm : public mm {
   gaddr_t pml4_addr;
 
 public:
-  vkern_mm();
+  vkern_mm(offset_ptr<struct mm> mm);
 };
 
 extern const gaddr_t user_addr_max;

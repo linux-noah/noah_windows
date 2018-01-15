@@ -26,7 +26,8 @@ clone_proc(struct proc *dst_proc, struct proc *src_proc)
 {
   *dst_proc = *src_proc;
   dst_proc->pid = vkern->next_pid++;
-  dst_proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
+  dst_proc->mm = vkern_shm->construct<struct mm>(bip::anonymous_instance)();
+  dst_proc->p_mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
   clone_mm(dst_proc->mm.get(), src_proc->mm.get());
   dst_proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
   // TODO: Copy the all left. Leave it later assuming currently 

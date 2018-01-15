@@ -24,17 +24,17 @@
 #include "linux/mman.h"
 
 void
-init_mmap(struct proc_mm *mm)
+init_mmap(struct proc_mm *p_mm)
 {
-  mm->current_mmap_top = 0x00000000c0000000;
+  p_mm->current_mmap_top = 0x00000000c0000000;
 }
 
 gaddr_t
 alloc_region(size_t len)
 {
   len = roundup(len, PAGE_SIZE(PAGE_4KB));
-  proc->mm->current_mmap_top += len;
-  return proc->mm->current_mmap_top - len;
+  proc->p_mm->current_mmap_top += len;
+  return proc->p_mm->current_mmap_top - len;
 }
 
 int
