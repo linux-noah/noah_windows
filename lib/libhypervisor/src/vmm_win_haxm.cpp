@@ -209,6 +209,15 @@ hax_run_vcpu(HANDLE vcpufd)
 }
 
 static vmm_return_t
+hax_close_vcpu(HANDLE vcpufd)
+{
+  if (CloseHandle(vcpufd))
+    return VMM_SUCCESS;
+  else
+    return VMM_ERROR;
+}
+
+static vmm_return_t
 hax_get_msrs(HANDLE vcpufd, struct hax_msr_data *msrs)
 {
   DWORD dsize;
@@ -249,10 +258,12 @@ vmm_create(vmm_vm_t *ret)
 vmm_return_t
 vmm_destroy(vmm_vm_t vm)
 {
+  for (auto cpu : vm->cpus) {
+    hax_close_vcpu(cpu->vcpufd);
+  }
   int err = hax_close_vm(vm->vmfd);
   if (err < 0)
     return err;
-  // TODO: delete vcpus
   delete vm;
   return VMM_SUCCESS;
 }
@@ -302,7 +313,11 @@ vmm_cpu_create(vmm_vm_t vm, vmm_cpu_t *cpu)
 vmm_return_t
 vmm_cpu_destroy(vmm_vm_t vm, vmm_cpu_t cpu)
 {
-  return VMM_ERROR;
+  int err = hax_close_vcpu(cpu->vcpufd);
+  if (err < 0)
+    return VMM_ERROR;
+  vm->cpus.remove(cpu);
+  return VMM_SUCCESS;
 }
 
 vmm_return_t
