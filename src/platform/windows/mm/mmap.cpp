@@ -82,6 +82,7 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   }
   *handle = m;
 
+  // HAX seems to fail VM-entry the map view has PROT_READ | PROT_WRITE access
   *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
     err = -winnative_to_linux_errno(GetLastError());
@@ -104,6 +105,7 @@ platform_restore_mapped_mem(void **ret, platform_handle_t m, size_t size, int pr
   }
 
   int err;
+  // HAX seems to fail VM-entry the map view has PROT_READ | PROT_WRITE access
   *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
     err = -winnative_to_linux_errno(GetLastError());
