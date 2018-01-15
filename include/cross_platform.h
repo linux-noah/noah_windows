@@ -25,6 +25,7 @@
 
 typedef int64_t ssize_t;
 typedef HANDLE platform_handle_t;
+const platform_handle_t PLATFORM_INVALID_HANDLE = INVALID_HANDLE_VALUE;
 
 
 // Temporary stubs for pthread
@@ -62,6 +63,7 @@ typedef HANDLE platform_handle_t;
 #define UNREACHABLE() __builtin_unreachable()
 
 typedef int platform_handle_t;
+const platform_handle_t PLATFORM_INVALID_HANDLE = int;
 
 #endif
 

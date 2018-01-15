@@ -13,6 +13,7 @@
 #include "cross_platform.h"
 #include "types.h"
 #include "noah.h"
+#include "x86/vm.h"
 
 namespace bip = boost::interprocess;
 
@@ -73,6 +74,19 @@ void restore_mm(struct mm *mm);
 void clone_mm(struct mm *dst_mm, struct mm *src_mm);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
+template <typename T>
+gaddr_t
+kalloc_aligned(T **ptr, int flags, int size, int align)
+{
+  *ptr = reinterpret_cast<T *>(vkern_shm->allocate_aligned(size, align));
+  return kmap(*ptr, PLATFORM_INVALID_HANDLE, size, flags);
+}
+template <typename T>
+gaddr_t
+kalloc_aligned(T **ptr, int flags)
+{
+  return kalloc_aligned(ptr, flags, sizeof(T), PAGE_SIZE(PAGE_4KB));
+}
 
 int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);

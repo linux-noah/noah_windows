@@ -248,17 +248,8 @@ exception_entry_t *exception_entry;
 void
 init_idt()
 {
-  platform_handle_t handle;
-#ifdef _WIN32
-  const int platform_mflags = MAP_INHERIT;
-#else
-  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
-#endif
-  int err = platform_map_mem(reinterpret_cast<void **>(&idt), &handle, sizeof(gate_desc_t), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
-  idt_ptr = kmap(idt, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE);
+  idt_ptr = kalloc_aligned(&idt, PROT_READ | PROT_WRITE, 
+    roundup(sizeof(*idt), PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB));
 
   write_register(VMM_X64_IDT_BASE, idt_ptr);
   write_register(VMM_X64_IDT_LIMIT, sizeof idt);
@@ -271,22 +262,14 @@ init_idt()
   efer |= EFER_SCE;
   vkern_set_msr(MSR_IA32_EFER, efer);
 
-  err = platform_map_mem(reinterpret_cast<void **>(&syscall_entry), &handle, sizeof(syscall_entry_t), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
+  syscall_entry_addr = kalloc_aligned(&syscall_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   (*syscall_entry)[0] = OP_HLT;
-  syscall_entry_addr = kmap(syscall_entry, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
   vkern_set_msr(MSR_IA32_LSTAR, syscall_entry_addr);
   vkern_set_msr(MSR_IA32_FMASK, 0);
   vkern_set_msr(MSR_IA32_FMASK, 0);
   vkern_set_msr(MSR_IA32_STAR, GSEL(SEG_CODE, 0) << 32);
 
-  err = platform_map_mem(reinterpret_cast<void **>(&exception_entry), &handle, sizeof(exception_entry), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
-  exception_entry_addr = kmap(exception_entry, handle, PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_EXEC);
+  exception_entry_addr = kalloc_aligned(&exception_entry, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   for (int i = 0; i < 256; i++) {
     (*exception_entry)[i] = OP_HLT;
     // Set idt[i] to there
@@ -406,10 +389,10 @@ restore_vkernel(platform_handle_t shm_fd)
 {
 #ifdef _WIN32
   void *buf;
-  /*platform_restore_mapped_mem(&buf, shm_fd, vkern_shm_size + PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_INHERIT);
+  platform_restore_mapped_mem(&buf, shm_fd, vkern_shm_size + PAGE_SIZE(PAGE_4KB), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_INHERIT);
   assert(*reinterpret_cast<int *>(buf) == 0xdeadbeef); // Check the guard's value
   vkern_shm = new bip::managed_external_buffer(bip::open_only, (char *)buf + PAGE_SIZE(PAGE_4KB), vkern_shm_size);
-  vkern = vkern_shm->find<struct vkern>("vkern").first;*/
+  vkern = vkern_shm->find<struct vkern>("vkern").first;
 #endif
   restore_mm(vkern->mm.get());
   for (auto entry : *vkern->msrs) {

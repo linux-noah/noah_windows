@@ -54,23 +54,8 @@ gaddr_t pdp_ptr;
 void
 init_page()
 {
-#ifdef _WIN32
-  const int platform_mflags = MAP_INHERIT;
-#else
-  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
-#endif
-  int err;
-  platform_handle_t pml4_handle, pdp_handle;
-  err = platform_map_mem(reinterpret_cast<void **>(&pml4), &pml4_handle, sizeof(pe_t), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
-  err = platform_map_mem(reinterpret_cast<void **>(&pdp), &pdp_handle, sizeof(pe_t), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
-  pml4_ptr = kmap(pml4, pml4_handle, 0x1000, PROT_READ | PROT_WRITE);
-  pdp_ptr = kmap(pdp, pdp_handle, 0x1000, PROT_READ | PROT_WRITE);
+  pml4_ptr = kalloc_aligned(&pml4, PROT_READ | PROT_WRITE);
+  pdp_ptr = kalloc_aligned(&pdp, PROT_READ | PROT_WRITE);
   
   // Straight mapping
   (*pml4)[0] = (pdp_ptr & 0x000ffffffffff000ul) | PTE_U | PTE_W | PTE_P;
@@ -90,22 +75,10 @@ gaddr_t gdt_ptr;
 void
 init_segment()
 {
-#ifdef _WIN32
-  const int platform_mflags = MAP_INHERIT;
-#else
-  const int platform_mflags = MAP_PRIVATE | MAP_ANONYMOUS;
-#endif
-  int err;
-  platform_handle_t handle;
-  err = platform_map_mem(reinterpret_cast<void **>(&gdt), &handle, sizeof(gdt_t), PROT_READ | PROT_WRITE, platform_mflags);
-  if (err < 0) {
-    abort();
-  }
+  gdt_ptr = kalloc_aligned(&gdt, PROT_READ | PROT_WRITE, PAGE_SIZE(PAGE_4KB), PAGE_SIZE(PAGE_4KB));
   (*gdt)[SEG_NULL] = 0;
   (*gdt)[SEG_CODE] = 0x0020980000000000;
   (*gdt)[SEG_DATA] = 0x0000900000000000;
-
-  gdt_ptr = kmap(gdt, handle, 0x1000, PROT_READ | PROT_WRITE);
 
   write_register(VMM_X64_GDT_BASE, gdt_ptr);
   write_register(VMM_X64_GDT_LIMIT, 3 * 8 - 1);

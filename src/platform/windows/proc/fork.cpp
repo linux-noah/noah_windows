@@ -17,7 +17,6 @@ platform_restore_proc(unsigned pid)
 {
   proc = (*vkern->procs)[pid].get();
   restore_mm(proc->mm.get());
-  proc->vcpu_state->regs[VMM_X64_RAX].val = 0;
   set_vcpu_state(proc->vcpu_state.get());
   return 0;
 }
@@ -43,6 +42,7 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   struct proc *new_proc = vkern_shm->construct<struct proc>(bip::anonymous_instance)();
   clone_proc(new_proc, proc);
   get_vcpu_state(new_proc->vcpu_state.get());
+  new_proc->vcpu_state->regs[VMM_X64_RAX].val = 0;
   get_vcpu_state(proc->vcpu_state.get());
   vkern->procs->emplace(new_proc->pid, offset_ptr<struct proc>(new_proc));
   TCHAR bin[MAX_PATH];
