@@ -119,9 +119,9 @@ linux_to_native_errno(int linux_errno)
 }
 
 int
-native_to_linux_errno(int darwin_errno)
+native_to_linux_errno(int win_posix_errno)
 {
-  switch (darwin_errno) {
+  switch (win_posix_errno) {
   case EPERM:            return LINUX_EPERM;
   case ENOENT:           return LINUX_ENOENT;
   case ESRCH:            return LINUX_ESRCH;
@@ -201,6 +201,17 @@ native_to_linux_errno(int darwin_errno)
   default:
     assert(false);
   }
+}
+
+int
+winnative_to_linux_errno(int last_error)
+{
+  switch (last_error) {
+  case ERROR_ACCESS_DENIED:      return LINUX_EPERM;
+  case ERROR_FILE_NOT_FOUND:     return LINUX_ENFILE;
+  case ERROR_PATH_NOT_FOUND:     return LINUX_ENOENT;
+  }
+  return LINUX_EINVAL;
 }
 
 int

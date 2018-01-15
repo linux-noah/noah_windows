@@ -144,5 +144,8 @@ DECLARE_CENUM(errno, LINUX_ERRNO);
 DECLARE_CSTR_FUNC(errno, LINUX_ERRNO);
 int linux_to_native_errno(int);
 int native_to_linux_errno(int);
+#ifdef _WIN32
+int winnative_to_linux_errno(int);
+#endif
 
 #endif
