@@ -19,9 +19,6 @@
 #include "linux/ipc.h"
 #include "version.h"
 
-using boost::interprocess::offset_ptr;
-namespace bip = boost::interprocess;
-
 /* privilege management */
 
 void drop_privilege(void);
@@ -117,12 +114,6 @@ struct proc {
   offset_ptr<struct vcpu_state> vcpu_state;  // Used for fork. Should be moved into task afer supporting threads
 };
 
-
-template <typename T>
-using extbuf_allocator_t = bip::allocator<T, bip::managed_external_buffer::segment_manager>;
-
-template <typename K, typename V, typename Compare = std::less<K>>
-using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const K, V>>>;
 
 struct vkern {
   using procs_t = extbuf_map_t<unsigned, offset_ptr<struct proc>>;

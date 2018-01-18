@@ -15,10 +15,6 @@
 #include "noah.h"
 #include "x86/vm.h"
 
-namespace bip = boost::interprocess;
-
-using bip::offset_ptr;
-
 /* interface to user memory */
 
 void *guest_to_host(gaddr_t);
