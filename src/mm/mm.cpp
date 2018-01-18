@@ -210,6 +210,19 @@ guest_to_host(gaddr_t gaddr)
   return (char *)mm_region_haddr(region) + gaddr - region->gaddr;
 }
 
+mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
+  handle(handle), 
+  haddr(haddr),
+  haddr_offset(offset_ptr<void>(haddr)),
+  gaddr(gaddr),
+  size(size),
+  prot(prot),
+  mm_flags(mm_flags),
+  mm_fd(mm_fd),
+  pgoff(pgoff),
+  is_global(is_global)
+{}
+
 int
 region_compare(const struct mm_region *r1, const struct mm_region *r2)
 {
@@ -260,21 +273,10 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
 {
   assert(gaddr != 0);
 
-  auto region = vkern_shm->construct<mm_region>(bip::anonymous_instance)();
-  region->handle = handle;
-  if (mm->is_global) {
-    region->haddr_offset = haddr;
-  } else {
-    region->haddr = haddr;
-  }
-  region->gaddr = gaddr;
-  region->size = size;
-  region->prot = prot;
-  region->mm_flags = mm_flags;
-  region->mm_fd = mm_fd;
-  region->pgoff = pgoff;
-  region->is_global = mm->is_global;
-
+  auto region = vkern_shm->construct<mm_region>(bip::anonymous_instance)
+                                                 (handle, haddr, gaddr, size,
+                                                   prot, mm_flags, mm_fd, pgoff,
+                                                   mm->is_global);
   auto inserted = mm->regions->emplace(mm::regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
   if (!inserted.second) {
     panic("recording overlapping regions\n");

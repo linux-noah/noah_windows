@@ -44,6 +44,9 @@ struct mm_region {
   int mm_fd;
   int pgoff;           /* offset within mm_fd in page size */
   bool is_global;
+
+public:
+  mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global);
 };
 
 struct mm {
