@@ -57,10 +57,10 @@ struct mm {
   using regions_t      = extbuf_map_t<regions_key_t, offset_ptr<mm_region>, regions_key_less>;
   using regions_iter_t = mm::regions_t::iterator;
 
-  offset_ptr<regions_t> regions;
-  bool                  is_global;  /* If true, the mappings are global */
+  regions_t regions;
+  bool      is_global;  /* If true, the mappings are global */
 
-  uint64_t start_brk, current_brk;
+  uint64_t  start_brk, current_brk;
 
   pthread_rwlock_t alloc_lock;
 

@@ -135,24 +135,20 @@ init_segment()
 }
 
 mm::mm(bool is_global) :
-  is_global(is_global), 
-  regions(vkern_shm->construct<mm::regions_t>
-    (bip::anonymous_instance)(mm::regions_key_less(), *vkern->shm_allocator)
-  )
+  is_global(is_global),
+  regions(mm::regions_key_less(), *vkern->shm_allocator)
 {
   pthread_rwlock_init(&alloc_lock, NULL);
 }
 
 mm::~mm()
 {
-  for (auto cur : *regions) {
+  for (auto cur : regions) {
     auto r = cur.second.get();
     platform_unmap_mem(mm_region_haddr(r), r->handle, r->size);
     vm_munmap(r->gaddr, r->size);
     vkern_shm->destroy_ptr<mm_region>(r);
   }
-  vkern_shm->destroy_ptr<mm::regions_t>(regions.get());
-  regions = 0;
 }
 
 vkern_mm::vkern_mm() :
@@ -172,7 +168,7 @@ proc_mm::proc_mm()
 void
 restore_mm(struct mm *mm)
 {
-  for (auto entry : *mm->regions) {
+  for (auto entry : mm->regions) {
     auto mm_region = entry.second.get();
     void *haddr = mm_region_haddr(mm_region);
 #ifdef _WIN32
@@ -240,8 +236,8 @@ struct mm_region*
 /* Look up the mm_region which gaddr in [mm_region->gaddr, +size) */
 find_region(gaddr_t gaddr, struct mm *mm)
 {
-  auto find = mm->regions->find(mm::regions_key_t(gaddr, gaddr + 1));
-  if (find != mm->regions->end()) {
+  auto find = mm->regions.find(mm::regions_key_t(gaddr, gaddr + 1));
+  if (find != mm->regions.end()) {
     return find->second.get();
   }
   return nullptr;
@@ -250,7 +246,7 @@ find_region(gaddr_t gaddr, struct mm *mm)
 std::pair<mm::regions_iter_t, mm::regions_iter_t>
 find_region_range(gaddr_t gaddr, size_t size, struct mm *mm)
 {
-  return mm->regions->equal_range(mm::regions_key_t(gaddr, gaddr + size));
+  return mm->regions.equal_range(mm::regions_key_t(gaddr, gaddr + size));
 }
 
 std::pair<mm_region *, mm_region *>
@@ -277,7 +273,7 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
                                                  (handle, haddr, gaddr, size,
                                                    prot, mm_flags, mm_fd, pgoff,
                                                    mm->is_global);
-  auto inserted = mm->regions->emplace(mm::regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
+  auto inserted = mm->regions.emplace(mm::regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
   if (!inserted.second) {
     panic("recording overlapping regions\n");
   }
