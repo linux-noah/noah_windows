@@ -62,7 +62,7 @@ struct mm {
 
   uint64_t  start_brk, current_brk;
 
-  pthread_rwlock_t alloc_lock;
+  mutex_t mutex;
 
 public:
   mm(bool is_glboal);

@@ -30,13 +30,11 @@ kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
 
-  pthread_rwlock_wrlock(&vkern->mm->alloc_lock);
+  exclusive_lock lock(vkern->mm->mutex);
 
   record_region(vkern->mm.get(), handle, ptr, vkern->mm->current_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(vkern->mm->current_brk, size, flags, ptr);
   vkern->mm->current_brk += size;
-
-  pthread_rwlock_unlock(&vkern->mm->alloc_lock);
 
   return vkern->mm->current_brk - size;
 }
@@ -137,9 +135,7 @@ init_segment()
 mm::mm(bool is_global) :
   is_global(is_global),
   regions(mm::regions_key_less(), *vkern->shm_allocator)
-{
-  pthread_rwlock_init(&alloc_lock, NULL);
-}
+{}
 
 mm::~mm()
 {
@@ -189,8 +185,10 @@ void
 clone_mm(struct mm *dst_mm, struct mm *src_mm)
 {
   // TODO: make them read-only for CoW
-  *dst_mm = *src_mm;
-  pthread_rwlock_init(&dst_mm->alloc_lock, NULL);
+  dst_mm->is_global = src_mm->is_global;
+  dst_mm->start_brk = src_mm->start_brk;
+  dst_mm->current_brk = src_mm->current_brk;
+  dst_mm->regions = src_mm->regions; // TODO
 }
 
 void *

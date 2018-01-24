@@ -26,7 +26,7 @@ set(Boost_DEBUG ON)
 add_definitions( -DBOOST_ALL_NO_LIB )
 add_definitions( -DBOOST_ALL_DYN_LINK )
 endif()
-find_package(Boost 1.65 COMPONENTS program_options REQUIRED)
+find_package(Boost 1.65 COMPONENTS program_options date_time REQUIRED)
 link_directories(${BOOST_LIBRARYDIR})
 include_directories(${BOOST_INCLUDEDIR})
 
