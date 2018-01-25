@@ -7,7 +7,9 @@
 #include <pthread.h>
 #endif
 #include <cstdbool>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
 #include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/smart_ptr/shared_ptr.hpp>
 #include <boost/interprocess/managed_external_buffer.hpp>
 
 #include "cross_platform.h"
@@ -31,10 +33,74 @@ ssize_t strnlen_user(gaddr_t gaddr, size_t n);
 
 /* memory related structures */
 
-struct mm_region {
+class host_handle {
+public:
   platform_handle_t handle;
-  /* If this region is a global mapping, haddr_offset is used instead of haddr.
-   * Not using union since it prevents generation of the default constructor */
+
+  host_handle(platform_handle_t handle) {
+    this->handle = handle;
+  };
+  virtual ~host_handle() {
+#ifdef _WIN32
+    CloseHandle(handle);
+#else
+    close(handle);
+#endif
+  };
+};
+
+template <typename T>
+struct range_less {
+  using range_t = std::pair<T, T>;
+  bool operator()(const range_t &r1, const range_t &r2) const { return r1.second <= r2.first; };
+};
+
+class map_refcount {
+public:
+  using range_t = range_less<gaddr_t>::range_t;
+  using range_less = range_less<gaddr_t>;
+  using mapping_counter_t = extbuf_map_t<range_t, uint, range_less>;
+  using mapping_counter_iter_t = mapping_counter_t::iterator;
+
+  gaddr_t size;
+  mutex_t lock;
+  offset_ptr<mapping_counter_t> mapping_counter;
+
+  map_refcount(gaddr_t size) :
+    size(size), 
+    mapping_counter(offset_ptr<mapping_counter_t>(
+      vkern_shm->construct<mapping_counter_t>(bip::anonymous_instance)(range_less(), *vkern->shm_allocator)
+    ))
+  {
+    mapping_counter->emplace(range_t(0, size), 1);
+  };
+
+  virtual ~map_refcount() {
+    vkern_shm->destroy_ptr(mapping_counter.get());
+  }
+
+  void split(mapping_counter_iter_t &pos, gaddr_t split_addr) {
+  };
+
+  uint64_t incref(range_t range) { return 0;/*TODO*/ };
+  uint64_t decref(range_t range) { return 0;/*TODO*/ };
+};
+
+class host_mapped_file : public host_handle, map_refcount {
+public:
+  host_mapped_file(platform_handle_t handle, size_t size) :
+    host_handle(handle), map_refcount(size)
+  {};
+};
+
+struct mm_region {
+  using range_t = range_less<gaddr_t>::range_t;
+  using range_less = range_less<gaddr_t>;
+  using mapped_files_t = extbuf_map_t<range_t, shared_ptr<host_mapped_file>, range_less>;
+
+  platform_handle_t handle;
+  mapped_files_t mapped_files;
+  /* If this region is a global mapping, haddr_offset is used instead of haddr. */
   void *haddr;
   offset_ptr<void> haddr_offset;
   gaddr_t gaddr;

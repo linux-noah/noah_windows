@@ -357,6 +357,8 @@ init_vkern_struct()
   vkern->shm_handle = shm_handle;
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
+  //vkern->shm_deleter = vkern_shm->construct<extbuf_deleter_t<void>>
+  //                                  (bip::anonymous_instance)(vkern_shm->get_segment_manager());
   vkern->msrs = vkern_shm->construct<vkern::msrs_t>(bip::anonymous_instance)(*vkern->shm_allocator);
   vkern->mm = vkern_shm->construct<vkern_mm>(bip::anonymous_instance)();
   vkern->next_pid = 2;

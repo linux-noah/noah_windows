@@ -30,7 +30,7 @@ kmap(void *ptr, platform_handle_t handle, size_t size, int flags)
   assert((size & 0xfff) == 0);
   assert(((uint64_t) ptr & 0xfff) == 0);
 
-  exclusive_lock lock(vkern->mm->mutex);
+  scoped_lock lock(vkern->mm->mutex);
 
   record_region(vkern->mm.get(), handle, ptr, vkern->mm->current_brk, size, native_to_linux_mprot(flags), -1, -1, 0);
   vm_mmap(vkern->mm->current_brk, size, flags, ptr);
@@ -134,7 +134,7 @@ init_segment()
 
 mm::mm(bool is_global) :
   is_global(is_global),
-  regions(mm::regions_key_less(), *vkern->shm_allocator)
+  regions(mm::regions_t(mm::regions_key_less(), *vkern->shm_allocator))
 {}
 
 mm::~mm()
@@ -184,11 +184,22 @@ restore_mm(struct mm *mm)
 void
 clone_mm(struct mm *dst_mm, struct mm *src_mm)
 {
+  sharable_lock lock(src_mm->mutex);
+
   // TODO: make them read-only for CoW
   dst_mm->is_global = src_mm->is_global;
   dst_mm->start_brk = src_mm->start_brk;
   dst_mm->current_brk = src_mm->current_brk;
-  dst_mm->regions = src_mm->regions; // TODO
+  for (auto cur : src_mm->regions) {
+    auto key = cur.first;
+    auto reg = cur.second;
+    dst_mm->regions.emplace(key, offset_ptr<struct mm_region>(
+      vkern_shm->construct<struct mm_region>(bip::anonymous_instance)
+                                            (reg->handle, reg->haddr, reg->gaddr, reg->size,
+                                             reg->prot, reg->mm_flags, reg->mm_fd, reg->pgoff,
+                                             reg->is_global)
+    ));
+  }
 }
 
 void *
@@ -205,7 +216,13 @@ guest_to_host(gaddr_t gaddr)
 }
 
 mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
-  handle(handle), 
+  handle(handle),
+  /*file_mapping(shared_ptr<host_mapped_file>(
+    vkern_shm->construct<host_mapped_file>(bip::anonymous_instance)(handle, size - pgoff),
+    extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
+    extbuf_deleter_t<host_mapped_file>(vkern_shm->get_segment_manager())
+  )),*/
+  mapped_files(mm_region::mapped_files_t(mm_region::range_less(), *vkern->shm_allocator)),
   haddr(haddr),
   haddr_offset(offset_ptr<void>(haddr)),
   gaddr(gaddr),

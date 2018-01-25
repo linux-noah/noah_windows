@@ -12,6 +12,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused-parameter -std=gnu++14")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O1 -g -fno-omit-frame-pointer -fsanitize=address -fno-optimize-sibling-calls")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 endif()
+set(CMAKE_CXX_STANDARD 14)
 
 set(Boost_USE_MULTITHREADED ON)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

@@ -43,7 +43,7 @@ using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const 
 using mutex_t = bip::interprocess_upgradable_mutex;
 using sharable_lock = bip::sharable_lock<mutex_t>;
 using upgradable_lock = bip::upgradable_lock<mutex_t>;
-using exclusive_lock = bip::scoped_lock<mutex_t>;
+using scoped_lock = bip::scoped_lock<mutex_t>;
 
 template <typename T>
 using shared_ptr = bip::shared_ptr<T, extbuf_allocator_t<offset_ptr<void>>, bip::deleter<T, extbuf::segment_manager>>;
