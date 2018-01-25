@@ -175,7 +175,7 @@ int EXTERN vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_
 int EXTERN vmm_memory_unmap(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size);
 int EXTERN vmm_memory_protect(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size, int prot);
 
-#elif __linux__
+#elif defined(__linux__)
 
 #include <linux/kvm.h>
 typedef struct kvm_userspace_memory_region *vmm_memregion_t;
@@ -187,7 +187,7 @@ int EXTERN vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_
 int EXTERN vmm_memory_unmap(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size) __attribute__ ((error ("vmm_memory_unmap is not supported for KVM")));
 int EXTERN vmm_memory_protect(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size, int prot) __attribute__ ((error ("vmm_memory_protect is not supported for KVM")));
 
-#elif _WIN32
+#elif defined(_WIN32)
 
 #include <vmm_prot.h>
 

@@ -38,8 +38,6 @@ const uint64_t ADDR_PT2 = 0x4000;
 
 const uint64_t ADDR_GTD = 0x5000;
 
-const uint64_t ADDR_ENTRY = 0x6000;
-
 struct segment_desc {
   unsigned low_limit : 16;
   unsigned low_base : 16;
@@ -190,9 +188,13 @@ void init_page64(vmm_vm_t vm, vmm_cpu_t cpu, char *mem)
 int main()
 {
   const uint8_t code[] = {
-     0x48, 0xc7, 0xc0, 0x61, 0x00, 0x00, 0x00,    // movq    $'a',%rax
-     0xe7, 0x01,                                  // outl    %eax,$0x1
-     0xf4,                                        // hlt
+     0x48, 0xc7, 0xc0, 0x61, 0x00, 0x00, 0x00,   // mov    $0x61,%rax
+     0xe7, 0x01,                                 // out    %eax,$0x1
+     0x48, 0xc7, 0xc3, 0x00, 0x00, 0x01, 0x00,   // mov    $0x10000,%rbx
+     0x8b, 0x03,                                 // mov    (%rbx),%eax
+     0x48, 0xc7, 0xc0, 0x62, 0x00, 0x00, 0x00,   // mov    $0x62,%rax
+     0x89, 0x03,                                 // mov    %eax,(%rbx)
+     0xf4,                                       // hlt
   };
 
   vmm_vm_t vm;
@@ -203,19 +205,30 @@ int main()
   err = vmm_cpu_create(vm, &cpu);
   assert(err == 0);
   
-
-  char *mem = memalloc(0x100000);
-  memset(mem, 0, 0x100000);
-  err = vmm_memory_map(vm, mem, 0, 0x100000, PROT_READ | PROT_WRITE | PROT_EXEC);
+  static const int MEM_SIZE = 0x10000;
+  char *mem = memalloc(MEM_SIZE);
+  memset(mem, 0, MEM_SIZE);
+  err = vmm_memory_map(vm, mem, 0, MEM_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
   assert(err == 0);
+
+#ifdef _WIN32
+  static const int ROM_MEM_SIZE = 0x1000;
+  char *rom_mem = memalloc(ROM_MEM_SIZE);
+  memset(rom_mem, 0xa, ROM_MEM_SIZE);
+  err = vmm_memory_map(vm, rom_mem, MEM_SIZE, ROM_MEM_SIZE, PROT_READ | PROT_EXEC);
+  assert(err == 0);
+#endif
+
 
   init_page64(vm, cpu, mem);
   init_segment64(vm, cpu, mem);
 
+  static const int ADDR_ENTRY = 0x6000;
   vmm_cpu_set_register(vm, cpu, VMM_X64_RFLAGS, 0x2);
   vmm_cpu_set_register(vm, cpu, VMM_X64_RIP, ADDR_ENTRY);
 
   memcpy(mem + ADDR_ENTRY, code, sizeof(code));
+  int asserted = 0;
 
   /* Repeatedly run code and handle VM exits. */
   while (1) {
@@ -231,12 +244,27 @@ int main()
       return 1;
     case VMM_EXIT_HLT:
       puts("KVM_EXIT_HLT");
+#ifdef _WIN32
+      assert(asserted == 4);
+#else
+      assert(asserted == 2);
+#endif
       return 0;
     case VMM_EXIT_IO:
       ret = vmm_cpu_get_register(vm, cpu, VMM_X64_RAX, &value);
       assert(ret == 0);
+      assert(value == 'a');
       printf("from guest '%c'\n", (char) value);
+      asserted += 2;
       break;
+    case VMM_EXIT_MMIO: {
+      vmm_mmio_tunnel_t *tunnel;
+      vmm_mmio_get_tunnel(vm, cpu, &tunnel);
+      assert(*tunnel->value == 'b');
+      assert(tunnel->gpa == 0x10000);
+      asserted += 2;
+      break;
+    }
     default:
      ret = vmm_cpu_get_register(vm, cpu, VMM_X64_RIP, &value);
      assert(ret == 0);

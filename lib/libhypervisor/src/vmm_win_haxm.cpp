@@ -286,8 +286,9 @@ vmm_destroy(vmm_vm_t vm)
 vmm_return_t
 vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_t size, int prot)
 {
-  if (!(prot & PROT_READ))
+  if (!(prot & PROT_READ) && (prot & (PROT_WRITE | PROT_EXEC))) {
     return VMM_EINVAL;
+  }
   if (size == 0)
     return VMM_EINVAL;
   vmm_return_t err;
@@ -301,6 +302,8 @@ vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_t size, int
   } else {
     // TODO: map ranges not overlapping
   }
+  if (!(prot & PROT_READ))
+    return VMM_SUCCESS;
   int flags = 0;
   if (!(prot & PROT_WRITE))
     flags = HAX_RAM_INFO_ROM;
