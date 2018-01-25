@@ -7,6 +7,7 @@
 #include <pthread.h>
 #endif
 #include <cstdbool>
+#include <atomic>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/smart_ptr/shared_ptr.hpp>
@@ -55,51 +56,89 @@ struct range_less {
   bool operator()(const range_t &r1, const range_t &r2) const { return r1.second <= r2.first; };
 };
 
-class map_refcount {
+template <typename T, typename V>
+class discrete_range_map : 
+  private extbuf_map_t<typename range_less<T>::range_t, V, typename range_less<T>> 
+{
 public:
-  using range_t = range_less<gaddr_t>::range_t;
-  using range_less = range_less<gaddr_t>;
-  using mapping_counter_t = extbuf_map_t<range_t, uint, range_less>;
-  using mapping_counter_iter_t = mapping_counter_t::iterator;
+  using range_t    = typename range_less<T>::range_t;
+  using range_less = typename range_less<T>;
+  using map_t      = typename extbuf_map_t<range_t, V, range_less>;
+  using iterator   = typename map_t::iterator;
 
-  gaddr_t size;
-  mutex_t lock;
-  offset_ptr<mapping_counter_t> mapping_counter;
-
-  map_refcount(gaddr_t size) :
-    size(size), 
-    mapping_counter(offset_ptr<mapping_counter_t>(
-      vkern_shm->construct<mapping_counter_t>(bip::anonymous_instance)(range_less(), *vkern->shm_allocator)
-    ))
-  {
-    mapping_counter->emplace(range_t(0, size), 1);
+  using map_t::insert;
+  using map_t::emplace;
+  using map_t::erase;
+  using map_t::find;
+  using map_t::equal_range;
+  using map_t::begin;
+  using map_t::cbegin;
+  using map_t::end;
+  using map_t::cend;
+  void set_range(gaddr_t key, void* val) {};
+  void erase_range(gaddr_t key, void* val) {};
+  std::pair<map_t::iterator, map_t::iterator> split(const range_t &range, gaddr_t split_point) {
+    auto itr = this->find(range);
+    auto head_node = this->extract(itr);
+    head_node.key() = range_t(range.first, split_point);
+    auto head = this->insert(std::move(head_node));
+    auto tail = this->emplace(range_t(split_point, range.second), itr->second);
+    return std::pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
   };
 
-  virtual ~map_refcount() {
-    vkern_shm->destroy_ptr(mapping_counter.get());
-  }
+  discrete_range_map() :
+    discrete_range_map::map_t(range_less(), *vkern->shm_allocator)
+  {}
+};
 
-  void split(mapping_counter_iter_t &pos, gaddr_t split_addr) {
+class range_refcount : public discrete_range_map<gaddr_t, uint> {
+public:
+
+  gaddr_t size;
+
+  range_refcount(gaddr_t size) :
+    size(size) 
+  {
+    this->emplace(range_t(0, size), 1);
   };
 
   uint64_t incref(range_t range) { return 0;/*TODO*/ };
-  uint64_t decref(range_t range) { return 0;/*TODO*/ };
+  uint64_t decref(range_t range) {
+    /*auto overlap_iter = mapping_counter->equal_range(range);
+    while (overlap_iter.first != overlap_iter.second) {
+      auto cur = overlap_iter.first++;
+      auto overlapping = cur->first;
+
+      if (overlapping.first < range.first) {
+        split(cur, range.first);
+        //overlapping = split_region(proc->mm.get(), overlapping, range.first).second;
+      }
+      if (overlapping.second > range.second) {
+        split(cur, range.second);
+        //overlapping = split_region(proc->mm.get(), overlapping, gaddr + size).first;
+      }
+      cur->second--;
+    }*/
+    return 0;
+  };
 };
 
-class host_mapped_file : public host_handle, map_refcount {
+class host_filemap_handle : public host_handle {
+
 public:
-  host_mapped_file(platform_handle_t handle, size_t size) :
+  range_refcount map_refcount;
+  mutex_t        map_mutex;
+
+  host_filemap_handle(platform_handle_t handle, size_t size) :
     host_handle(handle), map_refcount(size)
   {};
 };
 
 struct mm_region {
-  using range_t = range_less<gaddr_t>::range_t;
-  using range_less = range_less<gaddr_t>;
-  using mapped_files_t = extbuf_map_t<range_t, shared_ptr<host_mapped_file>, range_less>;
+  using host_fmappings_t = discrete_range_map<gaddr_t, offset_ptr<host_filemap_handle>>;
 
   platform_handle_t handle;
-  mapped_files_t mapped_files;
+  host_fmappings_t host_fmappings;
   /* If this region is a global mapping, haddr_offset is used instead of haddr. */
   void *haddr;
   offset_ptr<void> haddr_offset;

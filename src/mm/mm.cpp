@@ -218,12 +218,6 @@ guest_to_host(gaddr_t gaddr)
 
 mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
   handle(handle),
-  /*file_mapping(shared_ptr<host_mapped_file>(
-    vkern_shm->construct<host_mapped_file>(bip::anonymous_instance)(handle, size - pgoff),
-    extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
-    extbuf_deleter_t<host_mapped_file>(vkern_shm->get_segment_manager())
-  )),*/
-  mapped_files(mm_region::mapped_files_t(mm_region::range_less(), *vkern->shm_allocator)),
   haddr(haddr),
   haddr_offset(offset_ptr<void>(haddr)),
   gaddr(gaddr),
@@ -407,4 +401,3 @@ copy_to_user(gaddr_t to_ptr, const void *src, size_t n)
   }
   return 0;
 }
-
