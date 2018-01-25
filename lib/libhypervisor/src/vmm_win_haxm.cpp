@@ -8,6 +8,7 @@
 #include <string>
 #include <list>
 #include <memory>
+#include <map>
 
 #include <vmm.h>
 #include "list.h"
@@ -15,12 +16,25 @@
 
 HANDLE hax_dev_fd = INVALID_HANDLE_VALUE;
 
+template <typename T>
+struct range_less {
+  using range_t = std::pair<T, T>;
+  bool operator()(const range_t &r1, const range_t &r2) const { return r1.second <= r2.first; };
+};
+
 struct vmm_vm {
+  using mmap_range_t = range_less<uint64_t>::range_t;
+  using mmap_range_less = range_less<uint64_t>;
+
   HANDLE vmfd;
   int vmid;
   std::list<struct vmm_cpu*> cpus;
+  std::map<mmap_range_t, bool, mmap_range_less> allocated;
 
-  vmm_vm() : vmfd(INVALID_HANDLE_VALUE), vmid(0), cpus(std::list<struct vmm_cpu*>()) {};
+  vmm_vm() : 
+    vmfd(INVALID_HANDLE_VALUE),
+    vmid(0)
+  {};
 };
 
 struct vmm_cpu {
@@ -273,10 +287,19 @@ vmm_memory_map(vmm_vm_t vm, vmm_uvaddr_t uva, vmm_gpaddr_t gpa, size_t size, int
 {
   if (!(prot & PROT_READ))
     return VMM_EINVAL;
+  if (size == 0)
+    return VMM_EINVAL;
   vmm_return_t err;
-  err = hax_alloc_ram(vm->vmfd, (uint64_t)uva, size);
-  if (err < 0)
-    return err;
+  auto urange = vmm_vm::mmap_range_t((uint64_t)uva, (uint64_t)uva + size);
+  auto overlap = vm->allocated.find(urange);
+  if (overlap == vm->allocated.end()) {
+    err = hax_alloc_ram(vm->vmfd, (uint64_t)uva, size);
+    if (err < 0)
+      return err;
+    vm->allocated.emplace(urange, true);
+  } else {
+    // TODO: map ranges not overlapping
+  }
   int flags = 0;
   if (!(prot & PROT_WRITE))
     flags = HAX_RAM_INFO_ROM;
