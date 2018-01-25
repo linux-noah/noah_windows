@@ -42,6 +42,7 @@ struct vmm_cpu {
   int vcpuid;
   struct hax_tunnel *tunnel;
   unsigned char *iobuf;
+  vmm_mmio_tunnel_t user_tunnel;
 
   vmm_cpu() : vcpufd(INVALID_HANDLE_VALUE), vcpuid(0), tunnel(NULL), iobuf(NULL) {};
 };
@@ -318,6 +319,27 @@ vmm_memory_protect(vmm_vm_t vm, vmm_gpaddr_t gpa, size_t size, int prot)
   return VMM_ERROR;
 }
 
+static vmm_return_t
+vmm_mmio_sync_user_tunnel(vmm_vm_t vm, vmm_cpu_t cpu)
+{
+  auto hax_mmio = reinterpret_cast<struct hax_fastmmio *>(cpu->iobuf);
+  auto &mmio = cpu->user_tunnel;
+  mmio.value = &hax_mmio->value;
+  mmio.gpa = hax_mmio->gpa;
+  mmio.size = hax_mmio->size;
+  mmio.direction = hax_mmio->direction;
+  mmio.native_mmio = hax_mmio;
+  mmio.native_mmio_size = sizeof(*hax_mmio);
+  return VMM_SUCCESS;
+}
+
+vmm_return_t
+vmm_mmio_get_tunnel(vmm_vm_t vm, vmm_cpu_t cpu, vmm_mmio_tunnel_t **tunnel)
+{
+  *tunnel = &cpu->user_tunnel;
+  return VMM_SUCCESS;
+}
+
 vmm_return_t
 vmm_cpu_create(vmm_vm_t vm, vmm_cpu_t *cpu)
 {
@@ -348,7 +370,11 @@ vmm_cpu_destroy(vmm_vm_t vm, vmm_cpu_t cpu)
 vmm_return_t
 vmm_cpu_run(vmm_vm_t vm, vmm_cpu_t cpu)
 {
-  return hax_run_vcpu(cpu->vcpufd);
+  auto ret = hax_run_vcpu(cpu->vcpufd);
+  if (cpu->tunnel->exit_status == HAX_EXIT_MMIO || cpu->tunnel->exit_status == HAX_EXIT_FAST_MMIO) {
+    vmm_mmio_sync_user_tunnel(vm, cpu);
+  }
+  return ret;
 }
 
 static inline vmm_return_t
@@ -513,7 +539,7 @@ to_vmm_exit_reason(uint32_t hax_exit_status)
   case HAX_EXIT_HLT: return VMM_EXIT_HLT;
   case HAX_EXIT_STATECHANGE: return VMM_EXIT_SHUTDOWN;
   case HAX_EXIT_PAUSED: return VMM_EXIT_HAX_PAUSED;
-  case HAX_EXIT_FAST_MMIO: return VMM_EXIT_IO;
+  case HAX_EXIT_FAST_MMIO: return VMM_EXIT_MMIO;
   default:
     fprintf(stderr, "Unexpected HAX's exit_status: %d\n", hax_exit_status);
     assert(false);
@@ -577,3 +603,4 @@ vmm_cpu_set_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, 
   }
   return hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
 }
+

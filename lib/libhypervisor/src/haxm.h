@@ -303,7 +303,10 @@ struct hax_capabilityinfo
 struct hax_fastmmio
 {
   uint64_t gpa;
-  uint64_t value;
+  union {
+    uint64_t value;
+    uint64_t gpa2;
+  };
   uint8_t size;
   uint8_t direction;
   uint16_t reg_index;
@@ -313,6 +316,7 @@ struct hax_fastmmio
   uint64_t cr3;
   uint64_t cr4;
 };
+
 
 #define HAX_DEVICE_TYPE 0x4000
 

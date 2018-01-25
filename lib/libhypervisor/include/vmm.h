@@ -129,6 +129,11 @@ int EXTERN vmm_destroy(vmm_vm_t vm);
 
 typedef struct vmm_cpu *vmm_cpu_t;
 
+typedef struct {
+  vmm_x64_reg_t key;
+  uint64_t      val;
+} vmm_x64_reg_entry_t; 
+
 int EXTERN vmm_cpu_create(vmm_vm_t vm, vmm_cpu_t *cpu);
 int EXTERN vmm_cpu_destroy(vmm_vm_t vm, vmm_cpu_t cpu);
 int EXTERN vmm_cpu_run(vmm_vm_t vm, vmm_cpu_t cpu);
@@ -139,14 +144,29 @@ int EXTERN vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t va
 int EXTERN vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value);
 int EXTERN vmm_cpu_set_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t value);
 
-typedef struct {
-  vmm_x64_reg_t key;
-  uint64_t      val;
-} vmm_x64_reg_entry_t; 
-
 typedef const void *vmm_uvaddr_t;
 typedef uint64_t vmm_gpaddr_t;
 
+enum {
+  VMM_MMIO_READ,
+  VMM_MMIO_WRITE,
+  VMM_MMIO_COPY,
+};
+
+typedef struct
+{
+  uint64_t gpa;
+  union {
+    uint64_t *value;
+    uint64_t *dst_gpa;
+  };
+  uint8_t size;
+  uint8_t direction;
+  void   *native_mmio;
+  size_t  native_mmio_size;
+} vmm_mmio_tunnel_t;
+
+int EXTERN vmm_mmio_get_tunnel(vmm_vm_t vm, vmm_cpu_t cpu, vmm_mmio_tunnel_t **tunnel);
 
 /* TODO: Abstract memory map management in Linux KVM */
 #ifdef __APPLE__
