@@ -190,7 +190,7 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
   dst_mm->is_global = src_mm->is_global;
   dst_mm->start_brk = src_mm->start_brk;
   dst_mm->current_brk = src_mm->current_brk;
-  for (auto cur : src_mm->regions) {
+  for (auto &cur : src_mm->regions) {
     auto key = cur.first;
     auto reg = cur.second;
     dst_mm->regions.emplace(key, offset_ptr<struct mm_region>(
@@ -199,6 +199,7 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
                                              reg->prot, reg->mm_flags, reg->mm_fd, reg->pgoff,
                                              reg->is_global)
     ));
+    vm_mmap(reg->gaddr, reg->size, PROT_READ, reg->haddr);
   }
 }
 
