@@ -405,7 +405,9 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
 #ifdef _WIN32
   auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
   auto cow_range_inhandle = host_filemap_handle::range_t(rounddown(offset_inhandle, PAGE_SIZE(PAGE_4KB)), roundup(offset_inhandle, PAGE_SIZE(PAGE_4KB)));
+  auto cow_pgoff = gaddr % PAGE_SIZE(PAGE_4KB);
   assert(offset_inhandle + size <= cow_range_inhandle.second); // TODO: case where the page boundary is crossed
+
   auto find = region->host_fmappings.find(cow_range_inhandle);
   auto &flmap = find->second.second;
   auto old_page = reinterpret_cast<char *>(find->second.first) + cow_range_inhandle.first;
@@ -418,7 +420,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   if (refcount == 1) {
     flmap->map(cow_range_inhandle);
     vm_mmap(rounddown(gaddr, PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB), linux_to_native_mprot(region->prot), old_page);
-    memcpy(old_page + offset_inhandle, &data, size);
+    memcpy(old_page + cow_pgoff, &data, size);
     return;
   }
   if (!region->cow_handle) {
@@ -433,7 +435,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   auto new_page = reinterpret_cast<char *>(region->haddr) + cow_range_inhandle.first;
   vm_mmap(rounddown(gaddr, PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB), linux_to_native_mprot(region->prot), new_page); // The memory region is committed by vm_mmap
   memcpy(new_page, old_page, PAGE_SIZE(PAGE_4KB));
-  memcpy(new_page + gaddr % PAGE_SIZE(PAGE_4KB), &data, size);
+  memcpy(new_page + cow_pgoff, &data, size);
   region->cow_handle->map(cow_range_inhandle);
   /*
   // Debug

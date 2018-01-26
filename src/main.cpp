@@ -161,7 +161,8 @@ main_loop(int return_on_sigret)
       // Temorary code for debug
       uint64_t native_exit_reason = 0;
       get_vcpu_control_state(VMM_CTRL_NATIVE_EXIT_REASON, &native_exit_reason);
-      abort();
+      //abort();
+      break;
 #endif
       uint64_t exc_vec;
       get_vcpu_control_state(VMM_CTRL_EXCEPTION_VECTOR, &exc_vec);

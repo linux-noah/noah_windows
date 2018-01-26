@@ -52,7 +52,7 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   }
   auto cur_cmd = GetCommandLine();
   auto new_cmd = str(boost::format("%1% --child=%2% --shm_fd=%3%") % cur_cmd % new_proc->pid % reinterpret_cast<uint64_t>(vkern->shm_handle));
-  TCHAR *new_cmd_cstr = reinterpret_cast<TCHAR *>(alloca(new_cmd.size()));
+  TCHAR *new_cmd_cstr = reinterpret_cast<TCHAR *>(alloca(new_cmd.size() + 1));
   strcpy(new_cmd_cstr, new_cmd.c_str());
   SECURITY_ATTRIBUTES sec;
   sec.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -66,9 +66,6 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   if (!succ) {
     return -LINUX_EINVAL; // TODO
   }
-  write_register(VMM_X64_RAX, new_proc->pid);
-  _sleep(5);
-  _exit(0); // To test the cloned process does the left things
   /*
   destroy_vm();
   create_vm();
@@ -80,5 +77,5 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   main_loop(0);
   */
 
-  return 0;
+  return new_proc->pid;
 }
