@@ -32,6 +32,11 @@
 struct proc *proc;
 _Thread_local struct task task;
 
+DEFINE_SYSCALL(getpid)
+{
+  return proc->pid;
+}
+
 DEFINE_SYSCALL(exit, int, reason)
 {
   if (task.clear_child_tid) {

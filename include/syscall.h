@@ -45,7 +45,7 @@
   SYSCALL(36, unimplemented)              \
   SYSCALL(37, unimplemented)              \
   SYSCALL(38, unimplemented)              \
-  SYSCALL(39, unimplemented)              \
+  SYSCALL(39, getpid)                     \
   SYSCALL(40, unimplemented)              \
   SYSCALL(41, unimplemented)              \
   SYSCALL(42, unimplemented)              \
@@ -378,7 +378,7 @@
   SYSCALL(36, unimplemented)              \
   SYSCALL(37, unimplemented)              \
   SYSCALL(38, unimplemented)              \
-  SYSCALL(39, unimplemented)              \
+  SYSCALL(39, getpid)                     \
   SYSCALL(40, unimplemented)              \
   SYSCALL(41, unimplemented)              \
   SYSCALL(42, unimplemented)              \
