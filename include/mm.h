@@ -58,7 +58,7 @@ struct range_less {
 
 template <typename T, typename V>
 class discrete_range_map : 
-  public extbuf_map_t<typename range_less<T>::range_t, V, typename range_less<T>> 
+  private extbuf_map_t<typename range_less<T>::range_t, V, typename range_less<T>> 
 {
 public:
   using range_t    = typename range_less<T>::range_t;
