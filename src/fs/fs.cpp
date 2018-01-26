@@ -260,3 +260,15 @@ out:
   free(buf);
   return r;
 }
+
+DEFINE_SYSCALL(readlink, gstr_t, path_ptr, gaddr_t, buf_ptr, int, bufsize)
+{
+  // TODO
+  return -LINUX_ENOENT;
+}
+
+DEFINE_SYSCALL(access, gstr_t, path_ptr, int, mode)
+{
+  // TODO
+  return -LINUX_ENOENT;
+}

@@ -27,7 +27,7 @@
   SYSCALL(18, unimplemented)              \
   SYSCALL(19, unimplemented)              \
   SYSCALL(20, unimplemented)              \
-  SYSCALL(21, unimplemented)              \
+  SYSCALL(21, access)                     \
   SYSCALL(22, unimplemented)              \
   SYSCALL(23, unimplemented)              \
   SYSCALL(24, unimplemented)              \
@@ -95,7 +95,7 @@
   SYSCALL(86, unimplemented)              \
   SYSCALL(87, unimplemented)              \
   SYSCALL(88, unimplemented)              \
-  SYSCALL(89, unimplemented)              \
+  SYSCALL(89, readlink)                   \
   SYSCALL(90, unimplemented)              \
   SYSCALL(91, unimplemented)              \
   SYSCALL(92, unimplemented)              \
@@ -360,7 +360,7 @@
   SYSCALL(18, unimplemented)              \
   SYSCALL(19, unimplemented)              \
   SYSCALL(20, unimplemented)              \
-  SYSCALL(21, unimplemented)              \
+  SYSCALL(21, access)                     \
   SYSCALL(22, unimplemented)              \
   SYSCALL(23, unimplemented)              \
   SYSCALL(24, unimplemented)              \
@@ -428,7 +428,7 @@
   SYSCALL(86, unimplemented)              \
   SYSCALL(87, unimplemented)              \
   SYSCALL(88, unimplemented)              \
-  SYSCALL(89, unimplemented)              \
+  SYSCALL(89, readlink)                   \
   SYSCALL(90, unimplemented)              \
   SYSCALL(91, unimplemented)              \
   SYSCALL(92, unimplemented)              \
