@@ -240,6 +240,45 @@ guest_to_host(gaddr_t gaddr)
   return (char *)mm_region_haddr(region, gaddr);
 }
 
+uint 
+range_refcount::incref(range_t range)
+{
+  auto found = find(range);
+  int cnt;
+  if (found == end()) {
+    cnt = 1;
+  } else {
+    cnt = found->second;
+  }
+  set_range(range, cnt + 1);
+  return cnt;
+}
+
+uint 
+range_refcount::decref(range_t range)
+{
+  auto found = find(range);
+  assert(found != end());
+  auto &cnt = found->second;
+  set_range(range, cnt - 1);
+  return cnt;
+}
+
+uint
+host_filemap_handle::map(range_t range) 
+{
+  scoped_lock lock(map_mutex);
+  return map_refcount.incref(range);
+}
+
+uint 
+host_filemap_handle::unmap(range_t range) 
+{
+  scoped_lock lock(map_mutex);
+  return map_refcount.decref(range);
+};
+
+
 mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global, bool should_cow) :
   haddr(haddr),
   haddr_offset(offset_ptr<void>(haddr)),
@@ -374,6 +413,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   }
   auto refcount = flmap->unmap(cow_range_inhandle);
   if (refcount == 1) {
+    flmap->map(cow_range_inhandle);
     vm_mmap(rounddown(gaddr, PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB), linux_to_native_mprot(region->prot), old_page);
     memcpy(old_page + offset_inhandle, &data, size);
     return;
@@ -488,3 +528,4 @@ copy_to_user(gaddr_t to_ptr, const void *src, size_t n)
   }
   return 0;
 }
+

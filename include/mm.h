@@ -58,7 +58,7 @@ struct range_less {
 
 template <typename T, typename V>
 class discrete_range_map : 
-  private extbuf_map_t<typename range_less<T>::range_t, V, typename range_less<T>> 
+  public extbuf_map_t<typename range_less<T>::range_t, V, typename range_less<T>> 
 {
 public:
   using range_t    = typename range_less<T>::range_t;
@@ -76,15 +76,50 @@ public:
   using map_t::cbegin;
   using map_t::end;
   using map_t::cend;
-  void set_range(range_t &key, V &&val) {};
-  void erase_range(range_t key) {};
+  void set_range(const range_t &range, V &&val) {
+    auto found = find(range);
+    if (found == cend() || found->first == range) { // Fast path
+      (*this)[range] = val;
+      return;
+    }
+    erase_range(range);
+    (*this)[range] = val;
+  };
+
+  void erase_range(const range_t &range) {
+    auto overlap_iter = equal_range(range);
+
+    if (overlap_iter.first == overlap_iter.second) { // Fast path
+      return;
+    }
+    auto head = overlap_iter.first;
+    auto tail = --overlap_iter.second;
+
+    if (head->first.first < range.first) {
+      split(head, range.first);
+    }
+    if (tail->first.second > range.second) {
+      split(tail, range.second);
+    }
+    overlap_iter = equal_range(range);
+    erase(overlap_iter.first, overlap_iter.second);
+  }
+
   pair<map_t::iterator, map_t::iterator> split(const range_t &range, gaddr_t split_point) {
-    auto itr = this->find(range);
-    auto head_node = this->extract(itr);
-    head_node.key() = range_t(range.first, split_point);
-    auto head = this->insert(std::move(head_node));
-    auto tail = this->emplace(range_t(split_point, range.second), itr->second);
-    return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
+    split(this->find(range), split_point);
+  };
+
+  pair<map_t::iterator, map_t::iterator> split(map_t::iterator &itr, gaddr_t split_point) {
+    auto range = itr->first;
+    auto val = std::move(itr->second);
+    erase(itr);
+    //auto head_node = extract(itr);
+    //head_node.key() = range_t(range.first, split_point);
+    //auto head = insert(std::move(head_node));
+    auto head = emplace(range, val);
+    auto tail = emplace(range_t(split_point, range.second), itr->second);
+    //return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
+    return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.first, tail.first);
   };
 
   discrete_range_map() :
@@ -101,25 +136,8 @@ public:
     size(size) 
   {};
 
-  uint incref(range_t range) { return 0;/*TODO*/ };
-  uint decref(range_t range) {
-    /*auto overlap_iter = mapping_counter->equal_range(range);
-    while (overlap_iter.first != overlap_iter.second) {
-      auto cur = overlap_iter.first++;
-      auto overlapping = cur->first;
-
-      if (overlapping.first < range.first) {
-        split(cur, range.first);
-        //overlapping = split_region(proc->mm.get(), overlapping, range.first).second;
-      }
-      if (overlapping.second > range.second) {
-        split(cur, range.second);
-        //overlapping = split_region(proc->mm.get(), overlapping, gaddr + size).first;
-      }
-      cur->second--;
-    }*/
-    return 0;
-  };
+  uint incref(range_t range);
+  uint decref(range_t range);
 };
 
 class host_filemap_handle : public host_handle {
@@ -133,14 +151,8 @@ public:
     host_handle(handle), map_refcount(size)
   {};
 
-  host_filemap_handle(platform_handle_t handle, size_t size, range_t map) :
-    host_handle(handle), map_refcount(size)
-  {
-    map_refcount.emplace(map, 1);
-  };
-
-  uint map(range_t range) { return 0; };
-  uint unmap(range_t range) { return 0; };
+  uint map(range_t range);
+  uint unmap(range_t range);
 };
 
 using host_fmappings_t = discrete_range_map<gaddr_t, pair<void *, shared_ptr<host_filemap_handle>>>;
