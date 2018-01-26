@@ -69,7 +69,7 @@
   SYSCALL(60, exit)                       \
   SYSCALL(61, unimplemented)              \
   SYSCALL(62, unimplemented)              \
-  SYSCALL(63, unimplemented)              \
+  SYSCALL(63, uname)                      \
   SYSCALL(64, unimplemented)              \
   SYSCALL(65, unimplemented)              \
   SYSCALL(66, unimplemented)              \
@@ -402,7 +402,7 @@
   SYSCALL(60, exit)                       \
   SYSCALL(61, wait4)                      \
   SYSCALL(62, unimplemented)              \
-  SYSCALL(63, unimplemented)              \
+  SYSCALL(63, uname)                      \
   SYSCALL(64, unimplemented)              \
   SYSCALL(65, unimplemented)              \
   SYSCALL(66, unimplemented)              \

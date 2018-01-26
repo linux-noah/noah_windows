@@ -71,3 +71,35 @@ DEFINE_SYSCALL(wait4, int, pid, gaddr_t, status_ptr, int, options, gaddr_t, rusa
   return 0;
 }
 #endif
+
+struct utsname {
+  char sysname[65];
+  char nodename[65];
+  char release[65];
+  char version[65];
+  char machine[65];
+  char domainname[65];
+};
+
+DEFINE_SYSCALL(uname, gaddr_t, buf_ptr)
+{
+  struct utsname buf;
+
+  strncpy(buf.sysname, "Linux", sizeof buf.sysname - 1);
+  strncpy(buf.release, LINUX_RELEASE, sizeof buf.release - 1);
+  strncpy(buf.version, LINUX_VERSION, sizeof buf.version - 1);
+  strncpy(buf.machine, "x86_64", sizeof buf.machine - 1);
+  strncpy(buf.domainname, "GNU/Linux", sizeof buf.domainname - 1);
+
+  int err = syswrap(gethostname(buf.nodename, sizeof buf.nodename - 1));
+  if (err < 0) {
+    return err;
+  }
+
+  if (copy_to_user(buf_ptr, &buf, sizeof(struct utsname))) {
+    return -LINUX_EFAULT;
+  }
+
+  return 0;
+}
+
