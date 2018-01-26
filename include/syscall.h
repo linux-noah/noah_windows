@@ -164,7 +164,7 @@
   SYSCALL(155, unimplemented)             \
   SYSCALL(156, unimplemented)             \
   SYSCALL(157, unimplemented)             \
-  SYSCALL(158, unimplemented)             \
+  SYSCALL(158, arch_prctl)                \
   SYSCALL(159, unimplemented)             \
   SYSCALL(160, unimplemented)             \
   SYSCALL(161, unimplemented)             \
@@ -497,7 +497,7 @@
   SYSCALL(155, unimplemented)             \
   SYSCALL(156, unimplemented)             \
   SYSCALL(157, unimplemented)             \
-  SYSCALL(158, unimplemented)             \
+  SYSCALL(158, arch_prctl)                \
   SYSCALL(159, unimplemented)             \
   SYSCALL(160, unimplemented)             \
   SYSCALL(161, unimplemented)             \

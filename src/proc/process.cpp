@@ -103,3 +103,29 @@ DEFINE_SYSCALL(uname, gaddr_t, buf_ptr)
   return 0;
 }
 
+DEFINE_SYSCALL(arch_prctl, int, code, gaddr_t, addr)
+{
+  uint64_t t;
+
+  switch (code) {
+  case LINUX_ARCH_SET_GS:
+    write_register(VMM_X64_GS_BASE, addr);
+    return 0;
+  case LINUX_ARCH_SET_FS:
+    write_register(VMM_X64_FS_BASE, addr);
+    return 0;
+  case LINUX_ARCH_GET_FS:
+    read_register(VMM_X64_FS_BASE, &t);
+    if (copy_to_user(addr, &t, sizeof t))
+      return -LINUX_EFAULT;
+    return 0;
+  case LINUX_ARCH_GET_GS:
+    read_register(VMM_X64_GS_BASE, &t);
+    if (copy_to_user(addr, &t, sizeof t))
+      return -LINUX_EFAULT;
+    return 0;
+  default:
+    return -LINUX_EINVAL;
+  }
+}
+
