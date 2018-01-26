@@ -435,7 +435,7 @@
   SYSCALL(93, unimplemented)              \
   SYSCALL(94, unimplemented)              \
   SYSCALL(95, unimplemented)              \
-  SYSCALL(96, unimplemented)              \
+  SYSCALL(96, gettimeofday)               \
   SYSCALL(97, unimplemented)              \
   SYSCALL(98, unimplemented)              \
   SYSCALL(99, unimplemented)              \

@@ -44,6 +44,7 @@ add_executable(noah
   src/fs/fs.cpp
   src/mm/mm.cpp
   src/mm/mmap.cpp
+  src/sys/time.cpp
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 set_property(TARGET noah APPEND PROPERTY LINK_FLAGS /Profile)
