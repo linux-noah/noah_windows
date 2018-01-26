@@ -46,6 +46,8 @@ add_executable(noah
   src/mm/mmap.cpp
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+set_property(TARGET noah APPEND PROPERTY LINK_FLAGS /Profile)
+target_link_libraries(noah wsock32 ws2_32)
 target_sources(noah PUBLIC
   src/conv_windows.cpp 
   src/platform/windows/mm/mmap.cpp
