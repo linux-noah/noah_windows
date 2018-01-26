@@ -42,6 +42,9 @@ vm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
   assert(is_page_aligned((void *) size, PAGE_4KB));
 
   vmm_memory_unmap(vm, gaddr, size);
+#ifdef _WIN32
+  VirtualAlloc(haddr, size, MEM_COMMIT, PAGE_READWRITE);
+#endif
   if (vmm_memory_map(vm, haddr, gaddr, size, prot) != VMM_SUCCESS) {
     panic("vmm_memory_map failed\n");
   }

@@ -75,14 +75,17 @@ platform_map_mem(void **ret, platform_handle_t *handle, size_t size, int prot, i
   sec.lpSecurityDescriptor = NULL;
   sec.bInheritHandle = (platform_mflags & MAP_INHERIT) != 0;
   int err;
-  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, prot_to_page_access(PROT_READ | PROT_WRITE | PROT_EXEC, false),
+  int acc = prot_to_page_access(PROT_READ | PROT_WRITE | PROT_EXEC, false);
+  if (platform_mflags & MAP_RESERVE)
+    acc |= SEC_RESERVE;
+  HANDLE m = CreateFileMapping(INVALID_HANDLE_VALUE, &sec, acc,
     static_cast<unsigned long>(size >> 32), static_cast<unsigned long>(size), NULL);
   if (m == INVALID_HANDLE_VALUE) {
     return -LINUX_ENOMEM;
   }
   *handle = m;
 
-  // HAX seems to fail VM-entry the map view has PROT_READ | PROT_WRITE access
+  // HAX seems to fail VM-entry the map view does not have PROT_READ | PROT_WRITE access
   *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
     err = -winnative_to_linux_errno(GetLastError());
@@ -105,7 +108,7 @@ platform_restore_mapped_mem(void **ret, platform_handle_t m, size_t size, int pr
   }
 
   int err;
-  // HAX seems to fail VM-entry the map view has PROT_READ | PROT_WRITE access
+  // HAX seems to fail VM-entry the map view does not have PROT_READ | PROT_WRITE access
   *ret = MapViewOfFile(m, prot_to_filemap_access(PROT_READ | PROT_WRITE, false), 0, 0, size);
   if (*ret == NULL) {
     err = -winnative_to_linux_errno(GetLastError());

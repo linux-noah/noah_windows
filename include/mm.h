@@ -263,9 +263,10 @@ int do_munmap(gaddr_t gaddr, size_t size);
 #define PROT_NONE  0x0
 #endif
 
-#define MAP_INHERIT       1
-#define MAP_FILE_SHARED   2
-#define MAP_FILE_PRIVATE  4
+#define MAP_INHERIT       0x1
+#define MAP_FILE_SHARED   0x2
+#define MAP_FILE_PRIVATE  0x4
+#define MAP_RESERVE       0x8
 
 #endif
 

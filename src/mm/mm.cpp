@@ -399,6 +399,7 @@ mm_region_haddr(struct mm_region *region, gaddr_t gaddr)
 void
 handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, uint64_t data)
 {
+#ifdef _WIN32
   auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
   assert(offset_inhandle + size <= PAGE_SIZE(PAGE_4KB));
   // TODO: case where the page boundary is crossed
@@ -420,7 +421,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   }
   if (!region->cow_handle) {
     platform_handle_t handle;
-    platform_map_mem(&region->haddr, &handle, region->size + region->pgoff, linux_to_native_mprot(region->prot), MAP_FILE_SHARED | MAP_INHERIT);
+    platform_map_mem(&region->haddr, &handle, region->size + region->pgoff, linux_to_native_mprot(region->prot), MAP_FILE_SHARED | MAP_INHERIT | MAP_RESERVE);
     region->cow_handle = std::move(shared_ptr<host_filemap_handle>(
       vkern_shm->construct<host_filemap_handle>(bip::anonymous_instance)(handle, region->size + region->pgoff),
       extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
@@ -432,6 +433,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   memcpy(new_page + offset_inhandle, &data, size);
   region->cow_handle->map(cow_range_inhandle);
   region->host_fmappings.set_range(cow_range_inhandle, host_fmappings_t::val_t(region->haddr, region->cow_handle));
+#endif
 }
 
 bool
