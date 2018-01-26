@@ -413,8 +413,8 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
   auto old_page = reinterpret_cast<char *>(find->second.first) + cow_range_inhandle.first;
   if (find->second.second == region->cow_handle) {
     // CoW of this page is already done. Just one of continuing mmio operations.
-    memcpy(old_page + offset_inhandle, &data, size);
-    return;
+    //memcpy(old_page + cow_pgoff, &data, size);
+    //return;
   }
   auto refcount = flmap->unmap(cow_range_inhandle);
   if (refcount == 1) {
@@ -423,7 +423,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
     memcpy(old_page + cow_pgoff, &data, size);
     return;
   }
-  if (!region->cow_handle) {
+  if (true || !region->cow_handle) {
     platform_handle_t handle;
     platform_map_mem(&region->haddr, &handle, region->size + region->pgoff, linux_to_native_mprot(region->prot), MAP_FILE_SHARED | MAP_INHERIT | MAP_RESERVE);
     region->cow_handle = std::move(shared_ptr<host_filemap_handle>(
