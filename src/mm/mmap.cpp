@@ -50,6 +50,7 @@ do_munmap(gaddr_t gaddr, size_t size)
   if (overlap_iter.first == overlap_iter.second) {
     return -LINUX_ENOMEM;
   }
+  assert(false);
   
   while (overlap_iter.first != overlap_iter.second) {
     auto cur = overlap_iter.first++;

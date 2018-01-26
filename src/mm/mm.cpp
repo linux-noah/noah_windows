@@ -543,3 +543,23 @@ copy_to_user(gaddr_t to_ptr, const void *src, size_t n)
   return 0;
 }
 
+
+DEFINE_SYSCALL(brk, unsigned long, brk)
+{
+  uint64_t ret;
+  brk = roundup(brk, PAGE_SIZE(PAGE_4KB));
+
+  scoped_lock lock(proc->mm->mutex);
+  if (brk < proc->mm->start_brk) {
+    return proc->mm->start_brk;
+  }
+
+  if (brk < proc->mm->current_brk) {
+    do_munmap(brk, proc->mm->current_brk - brk);
+    return proc->mm->current_brk = brk;
+  } else {
+    do_mmap(proc->mm->current_brk, brk - proc->mm->current_brk, PROT_READ | PROT_WRITE, LINUX_PROT_READ | LINUX_PROT_WRITE, LINUX_MAP_PRIVATE | LINUX_MAP_FIXED | LINUX_MAP_ANONYMOUS, -1, 0);
+    return proc->mm->current_brk = brk;
+  }
+}
+

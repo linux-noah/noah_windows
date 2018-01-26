@@ -18,7 +18,7 @@
   SYSCALL(9, unimplemented)               \
   SYSCALL(10, unimplemented)              \
   SYSCALL(11, unimplemented)              \
-  SYSCALL(12, unimplemented)              \
+  SYSCALL(12, brk)                        \
   SYSCALL(13, unimplemented)              \
   SYSCALL(14, unimplemented)              \
   SYSCALL(15, unimplemented)              \
@@ -351,7 +351,7 @@
   SYSCALL(9, unimplemented)               \
   SYSCALL(10, unimplemented)              \
   SYSCALL(11, unimplemented)              \
-  SYSCALL(12, unimplemented)              \
+  SYSCALL(12, brk)                        \
   SYSCALL(13, unimplemented)              \
   SYSCALL(14, unimplemented)              \
   SYSCALL(15, unimplemented)              \
