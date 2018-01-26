@@ -32,6 +32,7 @@ int nr_vcpus;
 pthread_rwlock_t alloc_lock;
 
 _Thread_local static struct vcpu *vcpu;
+_Thread_local vmm_mmio_tunnel_t *vcpu_mmio_tunnel;
 
 void
 vm_mmap(gaddr_t gaddr, size_t size, int prot, void *haddr)
@@ -126,6 +127,10 @@ create_vcpu()
 
   vcpu = reinterpret_cast<struct vcpu *>(calloc(sizeof(struct vcpu), 1));
   vcpu->vcpuid = vcpuid;
+
+  if (vmm_mmio_get_tunnel(vm, vcpu->vcpuid, &vcpu_mmio_tunnel) != VMM_SUCCESS) {
+    panic("vmm_mmio_get_tunnel failed");
+  };
 
   pthread_rwlock_wrlock(&alloc_lock);
   list_add(&vcpu->list, &vcpus);

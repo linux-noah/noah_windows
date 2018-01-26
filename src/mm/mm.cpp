@@ -205,10 +205,10 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
   for (auto &cur : src_mm->regions) {
     auto &key = cur.first;
     auto &reg = cur.second;
-    auto cloned_reg = vkern_shm->construct<struct mm_region>(bip::anonymous_instance)
-                                                            (reg->handle, reg->haddr, reg->gaddr, reg->size,
-                                                             reg->prot, reg->mm_flags, reg->mm_fd, reg->pgoff,
-                                                             reg->is_global);
+    if (reg->prot & LINUX_PROT_WRITE)
+      reg->should_cow = true;
+    auto cloned_reg = vkern_shm->construct<struct mm_region>(bip::anonymous_instance)(*reg);
+    cloned_reg->cow_handle = decltype(cloned_reg->cow_handle)();
     dst_mm->regions.emplace(key, offset_ptr<struct mm_region>(cloned_reg));
     for (auto &cur_map : reg->host_fmappings) {
       auto &range = cur_map.first;
@@ -240,8 +240,7 @@ guest_to_host(gaddr_t gaddr)
   return (char *)mm_region_haddr(region, gaddr);
 }
 
-mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
-  handle(handle),
+mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global, bool should_cow) :
   haddr(haddr),
   haddr_offset(offset_ptr<void>(haddr)),
   gaddr(gaddr),
@@ -250,7 +249,8 @@ mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_
   mm_flags(mm_flags),
   mm_fd(mm_fd),
   pgoff(pgoff),
-  is_global(is_global)
+  is_global(is_global),
+  should_cow(should_cow)
 {
   auto flmap_handle = vkern_shm->construct<host_filemap_handle>(bip::anonymous_instance)(handle, size);
   flmap_handle->map(host_filemap_handle::range_t(pgoff, pgoff + size));
@@ -266,6 +266,10 @@ mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_
     )
   );
 }
+
+mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
+  mm_region(handle, haddr, gaddr, size, prot, mm_flags, mm_fd, pgoff, is_global, false)
+{}
 
 int
 region_compare(const struct mm_region *r1, const struct mm_region *r2)
@@ -350,6 +354,44 @@ mm_region_haddr(struct mm_region *region, gaddr_t gaddr)
     auto find = region->host_fmappings.find(host_fmappings_t::range_t(offset_inhandle, 1));
     return reinterpret_cast<char *>(find->second.first) + offset_inhandle;
   }
+}
+
+// Note: The caller should have the lock of mm
+void
+handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, uint64_t data)
+{
+  auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
+  assert(offset_inhandle + size <= PAGE_SIZE(PAGE_4KB));
+  // TODO: case where the page boundary is crossed
+  auto cow_range_inhandle = host_filemap_handle::range_t(rounddown(offset_inhandle, PAGE_SIZE(PAGE_4KB)), roundup(offset_inhandle, PAGE_SIZE(PAGE_4KB)));
+  auto find = region->host_fmappings.find(cow_range_inhandle);
+  auto &flmap = find->second.second;
+  auto old_page = reinterpret_cast<char *>(find->second.first) + cow_range_inhandle.first;
+  if (find->second.second == region->cow_handle) {
+    // CoW of this page is already done. Just one of continuing mmio operations.
+    memcpy(old_page + offset_inhandle, &data, size);
+    return;
+  }
+  auto refcount = flmap->unmap(cow_range_inhandle);
+  if (refcount == 1) {
+    vm_mmap(rounddown(gaddr, PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB), linux_to_native_mprot(region->prot), old_page);
+    memcpy(old_page + offset_inhandle, &data, size);
+    return;
+  }
+  if (!region->cow_handle) {
+    platform_handle_t handle;
+    platform_map_mem(&region->haddr, &handle, region->size + region->pgoff, linux_to_native_mprot(region->prot), MAP_FILE_SHARED | MAP_INHERIT);
+    region->cow_handle = std::move(shared_ptr<host_filemap_handle>(
+      vkern_shm->construct<host_filemap_handle>(bip::anonymous_instance)(handle, region->size + region->pgoff),
+      extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
+      extbuf_deleter_t<host_filemap_handle>(vkern_shm->get_segment_manager())
+    ));
+  }
+  auto new_page = reinterpret_cast<char *>(region->haddr) + cow_range_inhandle.first;
+  memcpy(new_page, old_page, PAGE_SIZE(PAGE_4KB));
+  memcpy(new_page + offset_inhandle, &data, size);
+  region->cow_handle->map(cow_range_inhandle);
+  region->host_fmappings.set_range(cow_range_inhandle, host_fmappings_t::val_t(region->haddr, region->cow_handle));
 }
 
 bool

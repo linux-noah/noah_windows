@@ -31,4 +31,6 @@ void write_fpstate(void *, size_t);
 void vm_mmap(gaddr_t addr, size_t len, int prot, void *ptr);
 void vm_munmap(gaddr_t addr, size_t len);
 
+extern _Thread_local vmm_mmio_tunnel_t *vcpu_mmio_tunnel;
+
 #endif

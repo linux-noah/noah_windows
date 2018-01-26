@@ -76,7 +76,7 @@ public:
   using map_t::cbegin;
   using map_t::end;
   using map_t::cend;
-  void set_range(range_t key, void* val) {};
+  void set_range(range_t &key, V &&val) {};
   void erase_range(range_t key) {};
   pair<map_t::iterator, map_t::iterator> split(const range_t &range, gaddr_t split_point) {
     auto itr = this->find(range);
@@ -133,6 +133,12 @@ public:
     host_handle(handle), map_refcount(size)
   {};
 
+  host_filemap_handle(platform_handle_t handle, size_t size, range_t map) :
+    host_handle(handle), map_refcount(size)
+  {
+    map_refcount.emplace(map, 1);
+  };
+
   uint map(range_t range) { return 0; };
   uint unmap(range_t range) { return 0; };
 };
@@ -140,8 +146,7 @@ public:
 using host_fmappings_t = discrete_range_map<gaddr_t, pair<void *, shared_ptr<host_filemap_handle>>>;
 
 struct mm_region {
-
-  platform_handle_t handle;
+  shared_ptr<host_filemap_handle> cow_handle;
   host_fmappings_t host_fmappings;
   /* If this region is a global mapping, haddr_offset is used instead of haddr. */
   void *haddr;
@@ -153,9 +158,11 @@ struct mm_region {
   int mm_fd;
   int pgoff;           /* offset within mm_fd in page size */
   bool is_global;
+  bool should_cow;
 
 public:
   mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global);
+  mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global, bool should_cow);
 };
 
 struct mm {
@@ -204,6 +211,7 @@ void init_page();
 void init_segment();
 void restore_mm(struct mm *mm);
 void clone_mm(struct mm *dst_mm, struct mm *src_mm);
+void handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, uint64_t data);
 
 gaddr_t kmap(void *ptr, platform_handle_t handle, size_t size, int flags);
 template <typename T>

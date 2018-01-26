@@ -64,8 +64,17 @@ handle_syscall(void)
   return 0;
 }
 
+void
+handle_pagefault(gaddr_t addr)
+{
+  // TODO
+  printk("page fault: caused by guest linear address 0x%" PRIx64 "\n", addr);
+  abort();
+  // send_signal(getpid(), LINUX_SIGSEGV);
+}
+
 int
-task_run()
+task_run(void)
 {
   /* handle pending signals */
   // if (has_sigpending()) {
@@ -97,6 +106,7 @@ main_loop(int return_on_sigret)
     get_vcpu_control_state(VMM_CTRL_EXIT_REASON, &exit_reason);
 
     switch (exit_reason) {
+    // The trampoline issues HLT for system call and exception in HAXM
     case VMM_EXIT_HLT: {
       uint64_t rip;
       read_register(VMM_X64_RIP, &rip);
@@ -112,6 +122,29 @@ main_loop(int return_on_sigret)
       }
 
       assert(false);
+      break;
+    }
+
+    case VMM_EXIT_MMIO: {
+      scoped_lock lock(proc->mm->mutex);
+      auto addr = vcpu_mmio_tunnel->gpa;
+      auto region = find_region(addr, proc->mm.get());
+      if (region == nullptr) {
+        handle_pagefault(addr);
+        break;
+      }
+      // Check should_cow since adding PROT_WRITE by mprotect just after page_fault 
+      // could also cause this situation
+      if (!(region->prot & LINUX_PROT_WRITE) || !region->should_cow) {
+        handle_pagefault(addr);
+        break;
+      }
+
+      // Copy On Write
+      if (vcpu_mmio_tunnel->direction == VMM_MMIO_COPY) {
+        panic("Unimplemented. CoW by MOVS \n");
+      }
+      handle_cow(proc->mm.get(), region, addr, vcpu_mmio_tunnel->size, *vcpu_mmio_tunnel->value);
       break;
     }
 
@@ -134,9 +167,7 @@ main_loop(int return_on_sigret)
       get_vcpu_control_state(VMM_CTRL_EXCEPTION_VECTOR, &exc_vec);
       switch (exc_vec) {
       case X86_VEC_PF: {
-        // TODO
-        printk("page fault: caused by guest linear address\n");
-        // send_signal(getpid(), LINUX_SIGSEGV);
+        handle_pagefault(0 /*TODO*/);
       }
       case X86_VEC_UD: {
         uint64_t rip;
