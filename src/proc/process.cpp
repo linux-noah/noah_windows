@@ -58,6 +58,11 @@ DEFINE_SYSCALL(exit, int, reason)
   }
 }
 
+DEFINE_SYSCALL(exit_group, int, reason)
+{
+  _exit(reason);
+}
+
 #ifdef _WIN32
 DEFINE_SYSCALL(wait4, int, pid, gaddr_t, status_ptr, int, options, gaddr_t, rusage_ptr)
 {
@@ -90,11 +95,15 @@ DEFINE_SYSCALL(uname, gaddr_t, buf_ptr)
   strncpy(buf.version, LINUX_VERSION, sizeof buf.version - 1);
   strncpy(buf.machine, "x86_64", sizeof buf.machine - 1);
   strncpy(buf.domainname, "GNU/Linux", sizeof buf.domainname - 1);
-
+  
+#ifdef _WIN32
+  strncpy(buf.nodename, "dummy_hostname", sizeof buf.nodename - 1);
+#else
   int err = syswrap(gethostname(buf.nodename, sizeof buf.nodename - 1));
   if (err < 0) {
     return err;
   }
+#endif
 
   if (copy_to_user(buf_ptr, &buf, sizeof(struct utsname))) {
     return -LINUX_EFAULT;
