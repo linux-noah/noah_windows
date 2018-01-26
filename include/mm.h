@@ -78,12 +78,16 @@ public:
   using map_t::cend;
   void set_range(const range_t &range, V &&val) {
     auto found = find(range);
-    if (found == cend() || found->first == range) { // Fast path
+    if (found == cend()) {
+      this->emplace(range, val);
+      return;
+    }
+    if(found->first == range) {
       (*this)[range] = val;
       return;
     }
     erase_range(range);
-    (*this)[range] = val;
+    this->emplace(range, val);
   };
 
   void erase_range(const range_t &range) {
@@ -92,14 +96,14 @@ public:
     if (overlap_iter.first == overlap_iter.second) { // Fast path
       return;
     }
-    auto head = overlap_iter.first;
-    auto tail = --overlap_iter.second;
-
-    if (head->first.first < range.first) {
-      split(head, range.first);
-    }
-    if (tail->first.second > range.second) {
-      split(tail, range.second);
+    while (overlap_iter.first != overlap_iter.second) {
+      auto cur = overlap_iter.first++;
+      if (cur->first.first < range.first) {
+        cur = split(cur, range.first).second;
+      }
+      if (cur->first.second > range.second) {
+        split(cur, range.second);
+      }
     }
     overlap_iter = equal_range(range);
     erase(overlap_iter.first, overlap_iter.second);
@@ -116,8 +120,8 @@ public:
     //auto head_node = extract(itr);
     //head_node.key() = range_t(range.first, split_point);
     //auto head = insert(std::move(head_node));
-    auto head = emplace(range, val);
-    auto tail = emplace(range_t(split_point, range.second), itr->second);
+    auto head = emplace(range_t(range.first, split_point), val);
+    auto tail = emplace(range_t(split_point, range.second), val);
     //return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
     return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.first, tail.first);
   };

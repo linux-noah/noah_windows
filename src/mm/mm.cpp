@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdlib>
+#include <cstdio>
 #include <boost/interprocess/managed_external_buffer.hpp>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -185,7 +186,7 @@ restore_mm(struct mm *mm)
         vm_mmap(
           mm_region->gaddr + range.first - mm_region->pgoff,
           range.second - range.first,
-          linux_to_native_mprot(mm_region->prot),
+          linux_to_native_mprot(mm_region->prot & ~(LINUX_PROT_WRITE)),
           reinterpret_cast<char *>(haddr) + range.first
         );
       }
@@ -390,7 +391,9 @@ mm_region_haddr(struct mm_region *region, gaddr_t gaddr)
     return reinterpret_cast<char *>(region->haddr_offset.get()) + gaddr;
   } else {
     auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
-    auto find = region->host_fmappings.find(host_fmappings_t::range_t(offset_inhandle, 1));
+    auto find = region->host_fmappings.find(host_fmappings_t::range_t(offset_inhandle, offset_inhandle + 1));
+    auto debug0 = find->first;
+    auto debug1 = find->second;
     return reinterpret_cast<char *>(find->second.first) + offset_inhandle;
   }
 }
@@ -401,9 +404,8 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
 {
 #ifdef _WIN32
   auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
-  assert(offset_inhandle + size <= PAGE_SIZE(PAGE_4KB));
-  // TODO: case where the page boundary is crossed
   auto cow_range_inhandle = host_filemap_handle::range_t(rounddown(offset_inhandle, PAGE_SIZE(PAGE_4KB)), roundup(offset_inhandle, PAGE_SIZE(PAGE_4KB)));
+  assert(offset_inhandle + size <= cow_range_inhandle.second); // TODO: case where the page boundary is crossed
   auto find = region->host_fmappings.find(cow_range_inhandle);
   auto &flmap = find->second.second;
   auto old_page = reinterpret_cast<char *>(find->second.first) + cow_range_inhandle.first;
@@ -429,9 +431,17 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
     ));
   }
   auto new_page = reinterpret_cast<char *>(region->haddr) + cow_range_inhandle.first;
+  vm_mmap(rounddown(gaddr, PAGE_SIZE(PAGE_4KB)), PAGE_SIZE(PAGE_4KB), linux_to_native_mprot(region->prot), new_page); // The memory region is committed by vm_mmap
   memcpy(new_page, old_page, PAGE_SIZE(PAGE_4KB));
-  memcpy(new_page + offset_inhandle, &data, size);
+  memcpy(new_page + gaddr % PAGE_SIZE(PAGE_4KB), &data, size);
   region->cow_handle->map(cow_range_inhandle);
+  /*
+  // Debug
+  auto hfm = region->host_fmappings;
+  for (auto &cur : hfm) {
+    printf("[%x, %x) : (host:%x, shared_ptr has: %x, count: %d)\n", cur.first.first, cur.first.second, cur.second.first, cur.second.second.get(), cur.second.second.use_count());
+  }
+  */
   region->host_fmappings.set_range(cow_range_inhandle, host_fmappings_t::val_t(region->haddr, region->cow_handle));
 #endif
 }
