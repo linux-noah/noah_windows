@@ -480,6 +480,9 @@ check_platform_version(void)
 }
 
 namespace po = boost::program_options;
+po::variables_map noah_opts;
+int noah_argc;
+char **noah_argv;
 
 int
 main(int argc, char *argv[], char **envp)
@@ -501,15 +504,16 @@ main(int argc, char *argv[], char **envp)
   po::positional_options_description pos;
   pos.add("linux_bin", -1);
 
-  po::variables_map opts;
   po::store(po::command_line_parser(argc, argv)
               .options(desc)
               .positional(pos)
               .run(),
-            opts);
-  po::notify(opts);
+            noah_opts);
+  po::notify(noah_opts);
+  noah_argc = argc;
+  noah_argv = argv;
 
-  if (opts.count("help") || !opts.count("linux_bin")) {
+  if (noah_opts.count("help") || !noah_opts.count("linux_bin")) {
     std::cout << "Usage: ./noah linux_bin" << std::endl;
     std::cout << desc << std::endl;
     return 1;
@@ -518,29 +522,29 @@ main(int argc, char *argv[], char **envp)
   create_vm();
   
   // TODO: realpath
-  if (!opts.count("child")) {
-    init_vkernel(opts["mnt"].as<std::string>().c_str());
+  if (!noah_opts.count("child")) {
+    init_vkernel(noah_opts["mnt"].as<std::string>().c_str());
 
-    if (opts.count("output")) {
-      init_printk(opts["output"].as<std::string>().c_str());
+    if (noah_opts.count("output")) {
+      init_printk(noah_opts["output"].as<std::string>().c_str());
     }
-    if (opts.count("strace")) {
-      init_meta_strace(opts["strace"].as<std::string>().c_str());
+    if (noah_opts.count("strace")) {
+      init_meta_strace(noah_opts["strace"].as<std::string>().c_str());
     }
-    if (opts.count("warning")) {
-      init_warnk(opts["warning"].as<std::string>().c_str());
+    if (noah_opts.count("warning")) {
+      init_warnk(noah_opts["warning"].as<std::string>().c_str());
     }
 
     int err;
-    if ((err = do_exec(opts["linux_bin"].as<std::string>().c_str(), argc, argv, envp)) < 0) {
+    if ((err = do_exec(noah_opts["linux_bin"].as<std::string>().c_str(), argc, argv, envp)) < 0) {
       errno = linux_to_native_errno(-err);
       perror("Error");
       exit(1);
     }
 
   } else {
-    restore_vkernel(reinterpret_cast<platform_handle_t>(opts["shm_fd"].as<uint64_t>()));
-    platform_restore_proc(opts["child"].as<unsigned>());
+    restore_vkernel(reinterpret_cast<platform_handle_t>(noah_opts["shm_fd"].as<uint64_t>()));
+    platform_restore_proc(noah_opts["child"].as<unsigned>());
   }
 
   main_loop(0);

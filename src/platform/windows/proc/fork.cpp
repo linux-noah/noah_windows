@@ -50,8 +50,15 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   if (bin_len == MAX_PATH && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
     return -LINUX_ENAMETOOLONG;
   }
+  // TODO: neater one
   auto cur_cmd = GetCommandLine();
-  auto new_cmd = str(boost::format("%1% --child=%2% --shm_fd=%3%") % cur_cmd % new_proc->pid % reinterpret_cast<uint64_t>(vkern->shm_handle));
+  auto new_cmd = str(
+    boost::format("%1% --child=%2% --shm_fd=%3% %4%")
+    % noah_argv[0]
+    % new_proc->pid
+    % reinterpret_cast<uint64_t>(vkern->shm_handle)
+    % noah_opts["linux_bin"].as<std::string>()
+  );
   TCHAR *new_cmd_cstr = reinterpret_cast<TCHAR *>(alloca(new_cmd.size() + 1));
   strcpy(new_cmd_cstr, new_cmd.c_str());
   SECURITY_ATTRIBUTES sec;

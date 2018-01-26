@@ -8,6 +8,7 @@
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/managed_external_buffer.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
+#include <boost/program_options.hpp>
 
 #include "cross_platform.h"
 #include "types.h"
@@ -145,6 +146,10 @@ struct vkern {
 static const size_t vkern_shm_size = 0x100000;
 extern bip::managed_external_buffer *vkern_shm;
 extern struct vkern *vkern;
+
+extern int noah_argc;
+extern char **noah_argv;
+extern boost::program_options::variables_map noah_opts;
 
 extern struct proc *proc;
 _Thread_local extern struct task task;
