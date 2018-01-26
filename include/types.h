@@ -30,6 +30,8 @@ typedef gaddr_t  gstr_t;
 using boost::interprocess::offset_ptr;
 namespace bip = boost::interprocess;
 
+using std::pair;
+
 using extbuf = bip::managed_external_buffer;
 
 template <typename T>
@@ -38,7 +40,7 @@ template <typename T>
 using extbuf_deleter_t = bip::deleter<T, extbuf::segment_manager>;
 
 template <typename K, typename V, typename Compare = std::less<K>>
-using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<std::pair<const K, V>>>;
+using extbuf_map_t = bip::map<K, V, Compare, extbuf_allocator_t<pair<const K, V>>>;
 
 using mutex_t = bip::interprocess_upgradable_mutex;
 using sharable_lock = bip::sharable_lock<mutex_t>;

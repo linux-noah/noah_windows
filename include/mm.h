@@ -52,7 +52,7 @@ public:
 
 template <typename T>
 struct range_less {
-  using range_t = std::pair<T, T>;
+  using range_t = pair<T, T>;
   bool operator()(const range_t &r1, const range_t &r2) const { return r1.second <= r2.first; };
 };
 
@@ -63,6 +63,7 @@ class discrete_range_map :
 public:
   using range_t    = typename range_less<T>::range_t;
   using range_less = typename range_less<T>;
+  using val_t      = V;
   using map_t      = typename extbuf_map_t<range_t, V, range_less>;
   using iterator   = typename map_t::iterator;
 
@@ -75,15 +76,15 @@ public:
   using map_t::cbegin;
   using map_t::end;
   using map_t::cend;
-  void set_range(gaddr_t key, void* val) {};
-  void erase_range(gaddr_t key, void* val) {};
-  std::pair<map_t::iterator, map_t::iterator> split(const range_t &range, gaddr_t split_point) {
+  void set_range(range_t key, void* val) {};
+  void erase_range(range_t key) {};
+  pair<map_t::iterator, map_t::iterator> split(const range_t &range, gaddr_t split_point) {
     auto itr = this->find(range);
     auto head_node = this->extract(itr);
     head_node.key() = range_t(range.first, split_point);
     auto head = this->insert(std::move(head_node));
     auto tail = this->emplace(range_t(split_point, range.second), itr->second);
-    return std::pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
+    return pair<discrete_range_map::iterator, discrete_range_map::iterator>(head.position, tail.first);
   };
 
   discrete_range_map() :
@@ -102,8 +103,8 @@ public:
     this->emplace(range_t(0, size), 1);
   };
 
-  uint64_t incref(range_t range) { return 0;/*TODO*/ };
-  uint64_t decref(range_t range) {
+  uint incref(range_t range) { return 0;/*TODO*/ };
+  uint decref(range_t range) {
     /*auto overlap_iter = mapping_counter->equal_range(range);
     while (overlap_iter.first != overlap_iter.second) {
       auto cur = overlap_iter.first++;
@@ -124,18 +125,23 @@ public:
 };
 
 class host_filemap_handle : public host_handle {
-
 public:
+  using range_t    = range_less<gaddr_t>::range_t;
+
   range_refcount map_refcount;
   mutex_t        map_mutex;
 
   host_filemap_handle(platform_handle_t handle, size_t size) :
     host_handle(handle), map_refcount(size)
   {};
+
+  uint map(range_t range) { return 0; };
+  uint unmap(range_t range) { return 0; };
 };
 
+using host_fmappings_t = discrete_range_map<gaddr_t, pair<void *, shared_ptr<host_filemap_handle>>>;
+
 struct mm_region {
-  using host_fmappings_t = discrete_range_map<gaddr_t, offset_ptr<host_filemap_handle>>;
 
   platform_handle_t handle;
   host_fmappings_t host_fmappings;
@@ -155,7 +161,7 @@ public:
 };
 
 struct mm {
-  using regions_key_t  = std::pair<gaddr_t, gaddr_t>;
+  using regions_key_t  = pair<gaddr_t, gaddr_t>;
   struct regions_key_less {
     bool operator()(const mm::regions_key_t &r1, const mm::regions_key_t &r2) const { return r1.second <= r2.first; };
   };
@@ -218,9 +224,9 @@ kalloc_aligned(T **ptr, int flags)
 
 int region_compare(const struct mm_region *r1, const struct mm_region *r2);
 struct mm_region *find_region(gaddr_t gaddr, struct mm *mm);
-std::pair<mm::regions_iter_t, mm::regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
+pair<mm::regions_iter_t, mm::regions_iter_t> find_region_range(gaddr_t gaddr, size_t size, struct mm *mm);
 struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff);
-std::pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
+pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
 
 bool is_region_private(struct mm_region*);
 void *mm_region_haddr(struct mm_region*);

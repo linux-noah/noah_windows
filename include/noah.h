@@ -121,7 +121,7 @@ struct vkern {
 
   platform_handle_t shm_handle;
   offset_ptr<extbuf_allocator_t<void>> shm_allocator;
-  //offset_ptr<extbuf_deleter_t<void>> shm_deleter;
+  offset_ptr<extbuf_deleter_t<void>> shm_deleter;
 
   offset_ptr<msrs_t> msrs;
 
