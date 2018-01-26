@@ -63,7 +63,8 @@ do_munmap(gaddr_t gaddr, size_t size)
     }
     proc->mm->regions.erase(mm::regions_key_t(overlapping->gaddr, overlapping->gaddr + overlapping->size));
     vm_munmap(overlapping->gaddr, overlapping->size);
-    platform_unmap_mem(mm_region_haddr(overlapping), overlapping->handle, overlapping->size);
+    //platform_unmap_mem(mm_region_haddr(overlapping), overlapping->handle, overlapping->size);
+    // TODO: unmap all handles in mm_region 
     vkern_shm->destroy_ptr<mm_region>(cur->second.get());
   }
 
@@ -110,6 +111,8 @@ do_mmap(gaddr_t addr, size_t len, int n_prot, int l_prot, int l_flags, int fd, o
     return -LINUX_EINVAL;
   } else {
     err = platform_map_mem(&ptr, &handle, len, n_prot, linux_to_native_mflags(l_flags));
+    fd = -1;
+    offset = 0;
   }
   if (err < 0) {
     panic("mmap failed. addr :0x%llx, len: 0x%lux, prot: %d, l_flags: %d, fd: %d, offset: 0x%llx\n", addr, len, l_prot, l_flags, fd, offset);

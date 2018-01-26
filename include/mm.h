@@ -99,9 +99,7 @@ public:
 
   range_refcount(gaddr_t size) :
     size(size) 
-  {
-    this->emplace(range_t(0, size), 1);
-  };
+  {};
 
   uint incref(range_t range) { return 0;/*TODO*/ };
   uint decref(range_t range) {
@@ -229,7 +227,7 @@ struct mm_region *record_region(struct mm *mm, platform_handle_t handle, void *h
 pair<mm_region *, mm_region *> split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr);
 
 bool is_region_private(struct mm_region*);
-void *mm_region_haddr(struct mm_region*);
+void *mm_region_haddr(struct mm_region*, gaddr_t);
 
 gaddr_t do_mmap(gaddr_t addr, size_t len, int d_prot, int l_prot, int l_flags, int fd, off_t offset);
 int do_munmap(gaddr_t gaddr, size_t size);

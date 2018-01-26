@@ -141,7 +141,7 @@ mm::~mm()
 {
   for (auto cur : regions) {
     auto r = cur.second.get();
-    platform_unmap_mem(mm_region_haddr(r), r->handle, r->size);
+    // TODO: unmap handles in mm_region
     vm_munmap(r->gaddr, r->size);
     vkern_shm->destroy_ptr<mm_region>(r);
   }
@@ -166,34 +166,30 @@ restore_mm(struct mm *mm)
 {
   for (auto &entry : mm->regions) {
     struct mm_region *mm_region = entry.second.get();
-    void *haddr = mm_region_haddr(mm_region);
-#ifdef _WIN32
-    if (!mm_region->is_global) {
-      // Map the region from the inherited handles
-      // TODO: Make them read-only for CoW
-      int n_prot = linux_to_native_mprot(mm_region->prot) & ~(PROT_EXEC);
-      int err = platform_restore_mapped_mem(&haddr, mm_region->handle, mm_region->size, n_prot, MAP_FILE_PRIVATE | MAP_INHERIT);
-      assert(err >= 0);
-      mm_region->haddr = haddr;
-    }
-    goto skip; // TODO
+    mm_region->haddr = PLATFORM_INVALID_HANDLE;
+    // Map the region from the inherited handles
     if (mm_region->is_global) {
       vm_mmap(mm_region->gaddr, mm_region->size, linux_to_native_mprot(mm_region->prot), mm_region->haddr_offset.get());
     } else {
       for (auto &cur_map : mm_region->host_fmappings) {
         auto &range = cur_map.first;
         auto &haddr = cur_map.second.first;
+#ifdef _WIN32
         auto &flmap = cur_map.second.second;
         int n_prot = linux_to_native_mprot(mm_region->prot) & ~(PROT_EXEC);
         int err = platform_restore_mapped_mem(&haddr, flmap->handle, mm_region->size, n_prot, MAP_FILE_PRIVATE | MAP_INHERIT);
         assert(err >= 0);
+#endif
         // TODO: Separate CreateFileMapping and MapViewOfFile in restoring
-        vm_mmap(mm_region->gaddr + range.first, range.second - range.first, linux_to_native_mprot(mm_region->prot), haddr);
+        // TODO: Make it read-only for CoW
+        vm_mmap(
+          mm_region->gaddr + range.first - mm_region->pgoff,
+          range.second - range.first,
+          linux_to_native_mprot(mm_region->prot),
+          reinterpret_cast<char *>(haddr) + range.first
+        );
       }
     }
-  skip:
-#endif
-    vm_mmap(mm_region->gaddr, mm_region->size, linux_to_native_mprot(mm_region->prot), haddr);
   }
 }
 
@@ -210,9 +206,9 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
     auto &key = cur.first;
     auto &reg = cur.second;
     auto cloned_reg = vkern_shm->construct<struct mm_region>(bip::anonymous_instance)
-                                                           (reg->handle, reg->haddr, reg->gaddr, reg->size,
-                                                            reg->prot, reg->mm_flags, reg->mm_fd, reg->pgoff,
-                                                            reg->is_global);
+                                                            (reg->handle, reg->haddr, reg->gaddr, reg->size,
+                                                             reg->prot, reg->mm_flags, reg->mm_fd, reg->pgoff,
+                                                             reg->is_global);
     dst_mm->regions.emplace(key, offset_ptr<struct mm_region>(cloned_reg));
     for (auto &cur_map : reg->host_fmappings) {
       auto &range = cur_map.first;
@@ -226,9 +222,8 @@ clone_mm(struct mm *dst_mm, struct mm *src_mm)
           shared_ptr<host_filemap_handle>(flmap)
         )
       );
-      //vm_mmap(reg->gaddr + range.first, range.second - range.first, linux_to_native_mprot(reg->prot) & ~PROT_WRITE, haddr);
+      vm_mmap(reg->gaddr + range.first - reg->pgoff, range.second - range.first, linux_to_native_mprot(reg->prot) & ~PROT_WRITE, haddr);
     }
-    vm_mmap(reg->gaddr, reg->size, linux_to_native_mprot(reg->prot) & ~PROT_WRITE, reg->haddr);
   }
 }
 
@@ -242,7 +237,7 @@ guest_to_host(gaddr_t gaddr)
   if (!region) {
     return NULL;
   }
-  return (char *)mm_region_haddr(region) + gaddr - region->gaddr;
+  return (char *)mm_region_haddr(region, gaddr);
 }
 
 mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_t size, int prot, int mm_flags, int mm_fd, int pgoff, bool is_global) :
@@ -256,7 +251,21 @@ mm_region::mm_region(platform_handle_t handle, void *haddr, gaddr_t gaddr, size_
   mm_fd(mm_fd),
   pgoff(pgoff),
   is_global(is_global)
-{}
+{
+  auto flmap_handle = vkern_shm->construct<host_filemap_handle>(bip::anonymous_instance)(handle, size);
+  flmap_handle->map(host_filemap_handle::range_t(pgoff, pgoff + size));
+  host_fmappings.emplace(
+    host_fmappings_t::range_t(pgoff, pgoff + size),
+    host_fmappings_t::val_t(
+      haddr,
+      shared_ptr<host_filemap_handle>(
+        flmap_handle,
+        extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
+        extbuf_deleter_t<host_filemap_handle>(vkern_shm->get_segment_manager())
+      )
+    )
+  );
+}
 
 int
 region_compare(const struct mm_region *r1, const struct mm_region *r2)
@@ -294,22 +303,17 @@ split_region(struct mm *mm, struct mm_region *region, gaddr_t gaddr)
   // TODO: not tested yet! split_region is called by only unmap, and unmap is not being called now
   assert(is_page_aligned((void*)gaddr, PAGE_4KB));
 
+  auto tail = vkern_shm->construct<mm_region>(bip::anonymous_instance)(*region);
   auto offset = gaddr - region->gaddr;
-  auto sp_haddr = (char *)mm_region_haddr(region) + offset;
-  auto sp_size = region->size - offset;
-  auto sp_pgoff = region->pgoff + offset;
+  tail->size = region->size - offset;
+  tail->pgoff = region->pgoff + offset;
   region->size = offset;
-  auto tail_range = host_fmappings_t::range_t(region->pgoff, region->pgoff + region->size);
-  auto &fd = region->host_fmappings.find(tail_range);
-  region->host_fmappings.erase_range(tail_range);
+  // TODO: modify mm_regions of mm
 
-  //auto tail = record_region(mm, region->handle, sp_haddr, region->gaddr, sp_size, region->prot, region->mm_flags, region->mm_fd, sp_pgoff);
-  auto tail = vkern_shm->construct<mm_region>(bip::anonymous_instance)
-                                               (region->handle, sp_haddr, region->gaddr, sp_size,
-                                                region->prot, region->mm_flags, region->mm_fd, sp_pgoff,
-                                                mm->is_global);
-  tail->host_fmappings.emplace(host_fmappings_t::range_t(0, sp_size), 
-                               host_fmappings_t::val_t(sp_haddr, shared_ptr<host_filemap_handle>(fd->second.second)));
+  auto head_range = host_fmappings_t::range_t(region->pgoff, region->pgoff + region->size);
+  auto tail_range = host_fmappings_t::range_t(tail->pgoff, tail->pgoff + tail->size);
+  region->host_fmappings.erase_range(tail_range);
+  tail->host_fmappings.erase_range(head_range);
   return pair<mm_region *, mm_region *>(region, tail);
 }
 
@@ -322,18 +326,6 @@ record_region(struct mm *mm, platform_handle_t handle, void *haddr, gaddr_t gadd
                                                (handle, haddr, gaddr, size,
                                                 prot, mm_flags, mm_fd, pgoff,
                                                 mm->is_global);
-  auto flmap_handle = vkern_shm->construct<host_filemap_handle>(bip::anonymous_instance)(handle, size);
-  region->host_fmappings.emplace(
-    host_fmappings_t::range_t(gaddr, gaddr + size),
-    host_fmappings_t::val_t(
-      haddr,
-      shared_ptr<host_filemap_handle>(
-        flmap_handle,
-        extbuf_allocator_t<offset_ptr<void>>(vkern_shm->get_segment_manager()),
-        extbuf_deleter_t<host_filemap_handle>(vkern_shm->get_segment_manager())
-      )
-    )
-  );
   auto inserted = mm->regions.emplace(mm::regions_key_t(gaddr, gaddr + size), offset_ptr<mm_region>(region));
   if (!inserted.second) {
     panic("recording overlapping regions\n");
@@ -349,12 +341,14 @@ is_region_private(struct mm_region *region)
 }
 
 void *
-mm_region_haddr(struct mm_region *region)
+mm_region_haddr(struct mm_region *region, gaddr_t gaddr)
 {
   if (region->is_global) {
-    return region->haddr_offset.get();
+    return reinterpret_cast<char *>(region->haddr_offset.get()) + gaddr;
   } else {
-    return region->haddr;
+    auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
+    auto find = region->host_fmappings.find(host_fmappings_t::range_t(offset_inhandle, 1));
+    return reinterpret_cast<char *>(find->second.first) + offset_inhandle;
   }
 }
 
