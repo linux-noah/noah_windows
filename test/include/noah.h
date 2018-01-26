@@ -17,8 +17,10 @@ uint64_t syscall(uint64_t num, uint64_t rdi, uint64_t rsi, uint64_t rdx)
 #define SYS_write 1
 #define SYS_open 2
 #define SYS_close 3
+#define SYS_getpid 39
 #define SYS_fork 57
 #define SYS_exit 60
+#define SYS_wait4 61
 #define SYS_rename 82
 
 #define O_RDONLY 0
@@ -48,6 +50,11 @@ int close(unsigned int fd)
   return syscall(SYS_close, fd, 0, 0);
 }
 
+int getpid(void)
+{
+  return syscall(SYS_getpid, 0, 0, 0);
+}
+
 int fork()
 {
     return syscall(SYS_fork, 0, 0, 0);
@@ -57,6 +64,11 @@ void _exit(int status)
 {
   syscall(SYS_exit, status, 0, 0);
   __builtin_unreachable();
+}
+
+int wait4(int pid, int *stat, int options, void *rusage)
+{
+  return syscall(SYS_wait4, pid, (uint64_t) stat, options);
 }
 
 int _main(int argc, char **argv)

@@ -96,6 +96,7 @@ end
 
 def test_assertion
   collect_tests("test_assertion").each do |target|
+    puts_testname(target)
     out, err, status = run_cmd("#{noah_binname} #{relative(target).shellescape}")
     
     nr_tests_match = /1->([0-9]+)/.match(out.lines[0])

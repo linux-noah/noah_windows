@@ -1,4 +1,4 @@
-#include "../include/noah.h"
+#include "noah.h"
 
 // Note: This test passes even if CoW is not working
 int main()

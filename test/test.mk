@@ -11,7 +11,10 @@ test_stdout/build/%_static: test_stdout/%_static.c include/*.h
 	CFLAGS=--static;\
 	$(MAKE_TEST_UPROGS)
 test_stdout/build/%_nolibc: test_stdout/%_nolibc.c include/noah.S include/*.h
-	CFLAGS="--static -nostdlib";\
+	CFLAGS="--static -nostdlib -I./include";\
+	$(MAKE_TEST_UPROGS)
+test_assertion/build/%_nolibc: test_assertion/%_nolibc.c include/noah.S include/*.h
+	CFLAGS="--static -nostdlib -I./include";\
 	$(MAKE_TEST_UPROGS)
 
 test_assertion/build/%: test_assertion/%.c include/*.h
