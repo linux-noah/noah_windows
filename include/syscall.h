@@ -344,7 +344,7 @@
   SYSCALL(2, unimplemented)               \
   SYSCALL(3, unimplemented)               \
   SYSCALL(4, unimplemented)               \
-  SYSCALL(5, unimplemented)               \
+  SYSCALL(5, fstat)                       \
   SYSCALL(6, unimplemented)               \
   SYSCALL(7, unimplemented)               \
   SYSCALL(8, unimplemented)               \

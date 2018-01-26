@@ -272,3 +272,35 @@ DEFINE_SYSCALL(access, gstr_t, path_ptr, int, mode)
   // TODO
   return -LINUX_ENOENT;
 }
+
+#ifdef _WIN32
+DEFINE_SYSCALL(fstat, int, fd, gaddr_t, st_ptr)
+{
+  struct l_newstat st;
+  struct _stat win_stat;
+  int n = _fstat(fd, &win_stat);
+  st.st_dev = win_stat.st_dev;
+  st.st_ino = win_stat.st_ino;
+  st.st_nlink = win_stat.st_nlink;
+  st.st_mode = win_stat.st_mode;
+  st.st_uid = win_stat.st_uid;
+  st.st_gid = win_stat.st_gid;
+  st.st_rdev = win_stat.st_rdev;
+  st.st_size = win_stat.st_size;
+  st.st_blksize = 0;
+  st.st_blocks = 0;
+  st.st_atim.tv_sec = win_stat.st_atime;
+  st.st_atim.tv_nsec = 0;
+  st.st_mtim.tv_sec = win_stat.st_mtime;
+  st.st_mtim.tv_nsec = 0;
+  st.st_ctim.tv_sec = win_stat.st_ctime;
+  st.st_ctim.tv_nsec = 0;
+  
+  if (n < 0)
+    return n;
+  if (copy_to_user(st_ptr, &st, sizeof st)) {
+    return -LINUX_EFAULT;
+  }
+  return n;
+}
+#endif
