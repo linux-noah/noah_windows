@@ -400,7 +400,7 @@
   SYSCALL(58, vfork)                      \
   SYSCALL(59, unimplemented)              \
   SYSCALL(60, exit)                       \
-  SYSCALL(61, unimplemented)              \
+  SYSCALL(61, wait4)                      \
   SYSCALL(62, unimplemented)              \
   SYSCALL(63, unimplemented)              \
   SYSCALL(64, unimplemented)              \

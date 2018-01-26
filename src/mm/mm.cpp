@@ -404,7 +404,7 @@ handle_cow(struct mm *mm, struct mm_region *region, gaddr_t gaddr, size_t size, 
 {
 #ifdef _WIN32
   auto offset_inhandle = gaddr - region->gaddr + region->pgoff;
-  auto cow_range_inhandle = host_filemap_handle::range_t(rounddown(offset_inhandle, PAGE_SIZE(PAGE_4KB)), roundup(offset_inhandle, PAGE_SIZE(PAGE_4KB)));
+  auto cow_range_inhandle = host_filemap_handle::range_t(rounddown(offset_inhandle, PAGE_SIZE(PAGE_4KB)), roundup(offset_inhandle + 1, PAGE_SIZE(PAGE_4KB)));
   auto cow_pgoff = gaddr % PAGE_SIZE(PAGE_4KB);
   assert(offset_inhandle + size <= cow_range_inhandle.second); // TODO: case where the page boundary is crossed
 

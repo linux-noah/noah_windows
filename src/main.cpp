@@ -355,6 +355,9 @@ init_first_proc(const char *root)
 
   task.tid = proc->pid;
   vkern->procs->emplace(proc->pid, offset_ptr<struct proc>(proc));
+#ifdef _WIN32
+  proc->platform.handle = GetCurrentProcess(); // The handle of the first proc is not used by anyone now. So, pseudo handle suffices
+#endif
 }
 
 struct vkern *vkern;
@@ -379,7 +382,6 @@ init_vkern_shm()
   return shm_handle;
 }
 
-class Dummy {};
 
 void
 init_vkern_struct()
@@ -389,8 +391,6 @@ init_vkern_struct()
   vkern->shm_handle = shm_handle;
   vkern->shm_allocator = vkern_shm->construct<extbuf_allocator_t<void>>
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
-  vkern->shm_deleter = vkern_shm->construct<extbuf_deleter_t<void>>
-                                    (bip::anonymous_instance)(vkern_shm->get_segment_manager());
   vkern->msrs = vkern_shm->construct<vkern::msrs_t>(bip::anonymous_instance)(*vkern->shm_allocator);
   vkern->mm = vkern_shm->construct<vkern_mm>(bip::anonymous_instance)();
   vkern->next_pid = 2;

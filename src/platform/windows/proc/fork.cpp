@@ -66,16 +66,7 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   if (!succ) {
     return -LINUX_EINVAL; // TODO
   }
-  /*
-  destroy_vm();
-  create_vm();
-  restore_vkernel(reinterpret_cast<platform_handle_t>(vkern->shm_handle));
-  platform_restore_proc(new_proc->pid);
-  write_register(VMM_X64_RAX, 0);
-  auto state = proc->vcpu_state.get();
-
-  main_loop(0);
-  */
+  new_proc->platform.handle = proc_info.hProcess;
 
   return new_proc->pid;
 }

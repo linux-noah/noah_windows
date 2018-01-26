@@ -57,3 +57,17 @@ DEFINE_SYSCALL(exit, int, reason)
     pthread_exit(&reason);
   }
 }
+
+#ifdef _WIN32
+DEFINE_SYSCALL(wait4, int, pid, gaddr_t, status_ptr, int, options, gaddr_t, rusage_ptr)
+{
+  // TODO: status, options, rusage
+  auto find = vkern->procs->find(pid);
+  if (find == vkern->procs->cend()) {
+    return -LINUX_ECHILD;
+  }
+  auto proc = find->second;
+  WaitForSingleObject(proc->platform.handle, INFINITE);
+  return 0;
+}
+#endif

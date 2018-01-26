@@ -95,6 +95,15 @@ struct pfutex_entry {
 /* TODO: collect garbage entries */
 KHASH_MAP_INIT_INT64(pfutex, struct list_head *)
 
+#ifdef _WIN32
+struct platform_proc {
+  HANDLE handle;
+};
+#else
+struct platform_proc {
+};
+#endif
+
 struct proc {
   int nr_tasks;
   struct list_head tasks;
@@ -112,6 +121,7 @@ struct proc {
   };
   struct fileinfo fileinfo;
   offset_ptr<struct vcpu_state> vcpu_state;  // Used for fork. Should be moved into task afer supporting threads
+  platform_proc platform;
 };
 
 
@@ -121,7 +131,6 @@ struct vkern {
 
   platform_handle_t shm_handle;
   offset_ptr<extbuf_allocator_t<void>> shm_allocator;
-  offset_ptr<extbuf_deleter_t<void>> shm_deleter;
 
   offset_ptr<msrs_t> msrs;
 
