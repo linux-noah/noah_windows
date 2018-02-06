@@ -259,11 +259,12 @@ void
 init_userstack(int argc, char *argv[], char **envp, uint64_t exe_base, const Elf64_Ehdr *ehdr, uint64_t global_offset, uint64_t interp_base)
 {
   static const uint64_t zero = 0;
+  static const uint64_t stack_top = user_addr_max;
 
-  do_mmap(STACK_TOP - STACK_SIZE, STACK_SIZE, PROT_READ | PROT_WRITE, LINUX_PROT_READ | LINUX_PROT_WRITE, LINUX_MAP_PRIVATE | LINUX_MAP_FIXED | LINUX_MAP_ANONYMOUS, -1, 0);
+  do_mmap(stack_top - STACK_SIZE, STACK_SIZE, PROT_READ | PROT_WRITE, LINUX_PROT_READ | LINUX_PROT_WRITE, LINUX_MAP_PRIVATE | LINUX_MAP_FIXED | LINUX_MAP_ANONYMOUS, -1, 0);
 
-  write_register(VMM_X64_RSP, STACK_TOP);
-  write_register(VMM_X64_RBP, STACK_TOP);
+  write_register(VMM_X64_RSP, stack_top);
+  write_register(VMM_X64_RBP, stack_top);
 
   char random[16];
 

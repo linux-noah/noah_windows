@@ -46,7 +46,6 @@ struct gate_desc {
 
 /* VM parameter */
 #define STACK_SIZE (1 << 21)
-#define STACK_TOP  0x0000007fc0000000ULL
 
 /* segments */
 #define GSEL(s,r) (((s)<<3) | r)        /* a global selector */
