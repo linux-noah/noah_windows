@@ -325,7 +325,7 @@ init_first_proc(const char *root)
 {
   proc = vkern_shm->construct<struct proc>(bip::anonymous_instance)();
   memset(proc, 0, sizeof(proc));
-  proc->pid = getpid();
+  proc->pid = vkern->next_pid++;
   proc->nr_tasks = 1;
   pthread_rwlock_init(&proc->lock, NULL);
   proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
@@ -393,6 +393,7 @@ init_vkern_struct()
                                       (bip::anonymous_instance)(vkern_shm->get_segment_manager());
   vkern->msrs = vkern_shm->construct<vkern::msrs_t>(bip::anonymous_instance)(*vkern->shm_allocator);
   vkern->mm = vkern_shm->construct<vkern_mm>(bip::anonymous_instance)();
+  vkern->next_pid = 2;
   vkern->procs = vkern_shm->construct<vkern::procs_t>
                               (bip::anonymous_instance)(*vkern->shm_allocator);
 }
@@ -497,7 +498,7 @@ main(int argc, char *argv[], char **envp)
     ("strace,s", po::value<std::string>(), "path meta strace file")
     ("warning,w", po::value<std::string>(), "path to warning log file")
     ("mnt,m", po::value<std::string>()->default_value("~/.noah/tree"), "path to root directory")
-    ("child,c", po::value<uint64_t>(), "mark this process as a forked process and pass its pid")
+    ("child,c", po::value<unsigned>(), "mark this process as a forked process and pass its pid")
     ("shm_fd,f", po::value<uint64_t>(), "inherited shared memory handle")
     ("linux_bin,b", po::value<std::string>(), "path to the Linux ELF to execute");
   po::positional_options_description pos;
@@ -543,7 +544,7 @@ main(int argc, char *argv[], char **envp)
 
   } else {
     restore_vkernel(reinterpret_cast<platform_handle_t>(noah_opts["shm_fd"].as<uint64_t>()));
-    platform_restore_proc(noah_opts["child"].as<uint64_t>());
+    platform_restore_proc(noah_opts["child"].as<unsigned>());
   }
 
   main_loop(0);

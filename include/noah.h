@@ -139,6 +139,7 @@ struct vkern {
   // Some members related to user memory space such as start_brk are meaningless in this.
   offset_ptr<struct vkern_mm> mm;
 
+  unsigned next_pid;
   offset_ptr<procs_t> procs;
 };
 
