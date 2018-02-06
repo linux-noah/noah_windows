@@ -273,6 +273,11 @@ DEFINE_SYSCALL(access, gstr_t, path_ptr, int, mode)
   return -LINUX_ENOENT;
 }
 
+DEFINE_SYSCALL(dup, int, oldfd)
+{
+  return syswrap(dup(oldfd));
+}
+
 #ifdef _WIN32
 DEFINE_SYSCALL(fstat, int, fd, gaddr_t, st_ptr)
 {
