@@ -13,9 +13,11 @@
 #include "syscall.h"
 
 int
-platform_restore_proc(unsigned pid)
+platform_restore_proc(uint64_t proc_offset)
 {
-  proc = (*vkern->procs)[pid].get();
+  proc = reinterpret_cast<struct proc *>(reinterpret_cast<uint64_t>(vkern_shm->get_address()) + proc_offset);
+  proc->pid = getpid();
+  vkern->procs->emplace(proc->pid, offset_ptr<struct proc>(proc));
   restore_mm(proc->mm.get());
   set_vcpu_state(proc->vcpu_state.get());
   return 0;
@@ -25,7 +27,7 @@ void
 clone_proc(struct proc *dst_proc, struct proc *src_proc)
 {
   *dst_proc = *src_proc;
-  dst_proc->pid = vkern->next_pid++;
+  dst_proc->pid = -1;
   dst_proc->mm = vkern_shm->construct<struct proc_mm>(bip::anonymous_instance)();
   clone_mm(dst_proc->mm.get(), src_proc->mm.get());
   dst_proc->vcpu_state = vkern_shm->construct<struct vcpu_state>(bip::anonymous_instance)();
@@ -44,7 +46,6 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   get_vcpu_state(new_proc->vcpu_state.get());
   new_proc->vcpu_state->regs[VMM_X64_RAX].val = 0;
   get_vcpu_state(proc->vcpu_state.get());
-  vkern->procs->emplace(new_proc->pid, offset_ptr<struct proc>(new_proc));
   TCHAR bin[MAX_PATH];
   auto bin_len = GetModuleFileName(NULL, bin, MAX_PATH);
   if (bin_len == MAX_PATH && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
@@ -55,7 +56,7 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   auto new_cmd = str(
     boost::format("%1% --child=%2% --shm_fd=%3% %4%")
     % noah_argv[0]
-    % new_proc->pid
+    % (reinterpret_cast<uint64_t>(new_proc) - reinterpret_cast<uint64_t>(vkern_shm->get_address()))
     % reinterpret_cast<uint64_t>(vkern->shm_handle)
     % noah_opts["linux_bin"].as<std::string>()
   );
@@ -75,5 +76,5 @@ platform_clone_process(unsigned long clone_flags, unsigned long newsp, gaddr_t p
   }
   new_proc->platform.handle = proc_info.hProcess;
 
-  return new_proc->pid;
+  return proc_info.dwProcessId;
 }
