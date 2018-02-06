@@ -31,18 +31,18 @@ DEFINE_SYSCALL(gettimeofday, gaddr_t, tp_ptr, gaddr_t, tzp_ptr)
   //gettimeofday(&tp, &tzp);
 
 
-  SYSTEMTIME  system_time;
   FILETIME    file_time;
   uint64_t    time;
 
-  GetSystemTime(&system_time);
-  SystemTimeToFileTime(&system_time, &file_time);
-  time = ((uint64_t)file_time.dwLowDateTime);
-  time += ((uint64_t)file_time.dwHighDateTime) << 32;
+  GetSystemTimeAsFileTime(&file_time);
+  time = file_time.dwLowDateTime;
+  time |= static_cast<uint64_t>(file_time.dwHighDateTime) << 32;
+  time /= 10;
 
-  static const uint64_t EPOCH = ((uint64_t)116444736000000000ULL);
-  tp.tv_sec = (long)((time - EPOCH) / 10000000L);
-  tp.tv_usec = (long)(system_time.wMilliseconds * 1000);
+  static const uint64_t EPOCH = 11644473600000000ULL;
+  time -= EPOCH;
+  tp.tv_sec = static_cast<long>(time / 1000000ULL);
+  tp.tv_usec = static_cast<long>(time % 1000000ULL);
 
   if (tp_ptr != 0) {
     struct l_timeval l_tp;
