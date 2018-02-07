@@ -43,8 +43,18 @@ struct vmm_cpu {
   struct hax_tunnel *tunnel;
   unsigned char *iobuf;
   vmm_mmio_tunnel_t user_tunnel;
+  struct vcpu_state_t state_cache;
+  bool cache_filled;
+  bool cache_dirty;
 
-  vmm_cpu() : vcpufd(INVALID_HANDLE_VALUE), vcpuid(0), tunnel(NULL), iobuf(NULL) {};
+  vmm_cpu() : 
+    vcpufd(INVALID_HANDLE_VALUE),
+    vcpuid(0),
+    tunnel(NULL),
+    iobuf(NULL),
+    cache_filled(false),
+    cache_dirty(false)
+  {};
 };
 
 static vmm_return_t
@@ -373,11 +383,28 @@ vmm_cpu_destroy(vmm_vm_t vm, vmm_cpu_t cpu)
 vmm_return_t
 vmm_cpu_run(vmm_vm_t vm, vmm_cpu_t cpu)
 {
+  if (cpu->cache_dirty) {
+    hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &cpu->state_cache);
+  }
   auto ret = hax_run_vcpu(cpu->vcpufd);
+  cpu->cache_filled = false;
+  cpu->cache_dirty = false;
   if (cpu->tunnel->exit_status == HAX_EXIT_MMIO || cpu->tunnel->exit_status == HAX_EXIT_FAST_MMIO) {
     vmm_mmio_sync_user_tunnel(vm, cpu);
   }
   return ret;
+}
+
+static inline vmm_return_t
+fill_cpu_cache(vmm_vm_t vm, vmm_cpu_t cpu)
+{
+  if (!cpu->cache_filled) {
+    vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &cpu->state_cache);
+    if (ret != VMM_SUCCESS)
+      return ret;
+    cpu->cache_filled = true;
+  }
+  return VMM_SUCCESS;
 }
 
 static inline vmm_return_t
@@ -480,24 +507,23 @@ gs_vcpu_state(int reg, struct vcpu_state_t *state, uint64_t *value, bool sets)
 vmm_return_t
 vmm_cpu_set_register(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_t reg, uint64_t value)
 {
-  struct vcpu_state_t state;
-  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  vmm_return_t ret = fill_cpu_cache(vm, cpu);
   if (ret != VMM_SUCCESS)
     return ret;
-  ret = gs_vcpu_state(reg, &state, &value, true);
+  ret = gs_vcpu_state(reg, &cpu->state_cache, &value, true);
   if (ret != VMM_SUCCESS)
     return ret;
-  return hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  cpu->cache_dirty = true;
+  return VMM_SUCCESS;
 }
 
 vmm_return_t
 vmm_cpu_get_register(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_t reg, uint64_t *value)
 {
-  struct vcpu_state_t state;
-  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  vmm_return_t ret = fill_cpu_cache(vm, cpu);
   if (ret != VMM_SUCCESS)
     return ret;
-  ret = gs_vcpu_state(reg, &state, value, false);
+  ret = gs_vcpu_state(reg, &cpu->state_cache, value, false);
   if (ret != VMM_SUCCESS)
     return ret;
   return VMM_SUCCESS;
@@ -576,14 +602,13 @@ vmm_cpu_set_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t value)
 vmm_return_t
 vmm_cpu_get_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries)
 {
-  struct vcpu_state_t state;
-  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  vmm_return_t ret = fill_cpu_cache(vm, cpu);
   if (ret != VMM_SUCCESS)
     return ret;
   for (int i = 0; i < n_entries; i++) {
     if (entries[i].key == VMM_X64_NO_REGISTER)
       continue;
-    int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, false);
+    int err = gs_vcpu_state(entries[i].key, &cpu->state_cache, &entries[i].val, false);
     if (err != VMM_SUCCESS)
       return err;
   }
@@ -593,17 +618,17 @@ vmm_cpu_get_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, 
 vmm_return_t
 vmm_cpu_set_registers(vmm_vm_t vm, vmm_cpu_t cpu, vmm_x64_reg_entry_t *entries, int n_entries)
 {
-  struct vcpu_state_t state;
-  vmm_return_t ret = hax_get_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  vmm_return_t ret = fill_cpu_cache(vm, cpu);
   if (ret != VMM_SUCCESS)
     return ret;
   for (int i = 0; i < n_entries; i++) {
     if (entries[i].key == VMM_X64_NO_REGISTER)
       continue;
-    int err = gs_vcpu_state(entries[i].key, &state, &entries[i].val, true);
+    int err = gs_vcpu_state(entries[i].key, &cpu->state_cache, &entries[i].val, true);
     if (err != VMM_SUCCESS)
       return err;
   }
-  return hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &state);
+  cpu->cache_dirty = true;
+  return VMM_SUCCESS;
 }
 
