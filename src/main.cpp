@@ -101,6 +101,7 @@ main_loop(int return_on_sigret)
    * Those trampoline codes execute "hlt" instruction to cause VMExit.
    */
   while (1) {
+    vcpu_sync_registers_with_cache();
     shared_tsc->pre_taskrun = __rdtsc();
     int ret = task_run();
     shared_tsc->post_taskrun = __rdtsc();

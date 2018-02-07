@@ -216,6 +216,12 @@ write_msr(uint32_t reg, uint64_t val) {
   }
 }
 
+void 
+vcpu_sync_registers_with_cache()
+{
+  vmm_cpu_sync_registers_with_cache(vm, vcpu->vcpuid);
+}
+
 int
 run_vcpu()
 {

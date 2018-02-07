@@ -25,6 +25,7 @@ void write_msr(uint32_t, uint64_t);
 void get_vcpu_state(struct vcpu_state *);
 void set_vcpu_state(struct vcpu_state *);
 void get_vcpu_control_state(int id, uint64_t *);
+void vcpu_sync_registers_with_cache();
 
 void write_fpstate(void *, size_t);
 

@@ -144,6 +144,8 @@ int EXTERN vmm_cpu_set_msr(vmm_vm_t vm, vmm_cpu_t cpu, uint32_t msr, uint64_t va
 int EXTERN vmm_cpu_get_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t *value);
 int EXTERN vmm_cpu_set_state(vmm_vm_t vm, vmm_cpu_t cpu, int id, uint64_t value);
 
+int EXTERN vmm_cpu_sync_registers_with_cache(vmm_vm_t vm, vmm_cpu_t cpu);
+
 typedef const void *vmm_uvaddr_t;
 typedef uint64_t vmm_gpaddr_t;
 

@@ -380,6 +380,17 @@ vmm_cpu_destroy(vmm_vm_t vm, vmm_cpu_t cpu)
   return VMM_SUCCESS;
 }
 
+
+vmm_return_t
+vmm_cpu_sync_registers_with_cache(vmm_vm_t vm, vmm_cpu_t cpu)
+{
+  if (cpu->cache_dirty) {
+    hax_set_vcpu_state(vm->vmfd, cpu->vcpufd, &cpu->state_cache);
+  }
+  cpu->cache_dirty = false;
+  return VMM_SUCCESS;
+}
+
 vmm_return_t
 vmm_cpu_run(vmm_vm_t vm, vmm_cpu_t cpu)
 {
