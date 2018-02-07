@@ -9,6 +9,7 @@
 #include <boost/interprocess/managed_external_buffer.hpp>
 #include <processor_flags.h>
 #include <processor_msrs.h>
+#include <intrin.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <sys/mman.h>
@@ -29,6 +30,8 @@
 #include "x86/irq_vectors.h"
 #include "x86/vm.h"
 #include "x86/vmx.h"
+
+struct eval_tsc *shared_tsc;
 
 static bool
 is_syscall(uint64_t rip)
@@ -97,7 +100,13 @@ main_loop(int return_on_sigret)
    * Otherwise, currently they are hooked by putting trampoline codes in the kernel space.
    * Those trampoline codes execute "hlt" instruction to cause VMExit.
    */
-  while (task_run() == 0) {
+  while (1) {
+    shared_tsc->pre_taskrun = __rdtsc();
+    int ret = task_run();
+    shared_tsc->post_taskrun = __rdtsc();
+    if (ret != 0)
+      break;
+
 
     /* dump_instr(); */
     /* print_regs(); */
@@ -541,10 +550,13 @@ main(int argc, char *argv[], char **envp)
       perror("Error");
       exit(1);
     }
+    do_mmap(0x1000, 0x1000, PROT_READ | PROT_WRITE, LINUX_PROT_READ | LINUX_PROT_WRITE, LINUX_MAP_PRIVATE | LINUX_MAP_FIXED | LINUX_MAP_ANONYMOUS, -1, 0);
+    shared_tsc = (struct eval_tsc *)guest_to_host(0x1000);
 
   } else {
     restore_vkernel(reinterpret_cast<platform_handle_t>(noah_opts["shm_fd"].as<uint64_t>()));
     platform_restore_proc(noah_opts["child"].as<unsigned>());
+    shared_tsc = (struct eval_tsc *)guest_to_host(0x1000);
   }
 
   main_loop(0);

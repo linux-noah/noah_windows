@@ -192,4 +192,12 @@ int linux_to_native_o_flags(int l_flags);
 
 #include "debug.h"
 
+struct eval_tsc {
+  uint64_t pre_taskrun;
+  uint64_t post_taskrun;
+  uint64_t pre_sys_blahblah;
+  uint64_t post_sys_blahblah;
+};
+extern struct eval_tsc *shared_tsc;
+
 #endif

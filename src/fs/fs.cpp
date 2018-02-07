@@ -275,7 +275,11 @@ DEFINE_SYSCALL(access, gstr_t, path_ptr, int, mode)
 
 DEFINE_SYSCALL(dup, int, oldfd)
 {
-  return syswrap(dup(oldfd));
+  int ret;
+  shared_tsc->pre_sys_blahblah = __rdtsc();
+  ret = dup(oldfd);
+  shared_tsc->post_sys_blahblah = __rdtsc();
+  return syswrap(ret);
 }
 
 #ifdef _WIN32
