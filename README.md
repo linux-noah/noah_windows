@@ -1,21 +1,6 @@
-# Noah [![Build Status](http://noah-ci.idylls.jp/job/noah/badge/icon)](http://noah-ci.idylls.jp/job/noah/)
+# Noah for Windows
 
-Noah is a Darwin subsystem for Linux, or "Bash on Ubuntu on Mac OS X". Noah is implemented as a hypervisor that traps linux system calls and translates them into Darwin's system calls. Noah also has an interpreter of ELF files so that binary executables of Linux run directly and flawlessly without any modifications.
-
-<img src="https://github.com/linux-noah/noah/blob/master/images/screenshot.png" width="600">
-
-## Quick Start
-
-Noah is installed via homebrew. On the first run, noah automatically downloads and installs a comprehensive linux environment in your home directory (by default, ubuntu 16.04 is installed in `~/.noah/tree`).
-
-```console
-$ brew install linux-noah/noah/noah
-$ noah
-```
-
-## Hacking
-
-See [HACKING.md](HACKING.md).
+The implementation of Noah for Windows, which is described in ["A robust and flexible operating system compatibility architecture", VEE 2020](https://dl.acm.org/doi/abs/10.1145/3381052.3381327).
 
 ## LICENSE
 
